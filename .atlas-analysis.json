@@ -1,0 +1,91 @@
+{
+  "projectType": "saas",
+  "projectName": "OPS Workspace",
+  "projectDescription": "Internal operations workspace with authentication, cashout tracking with real-time verification, and company credentials management system.",
+  "theme": "mint",
+  "primaryColor": "#5e6ad2",
+  "lightColor": "#6f7bf0",
+  "darkColor": "#4a56c4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/authentication",
+              "features/cashouts",
+              "features/operapedia"
+            ]
+          },
+          {
+            "group": "User Roles",
+            "pages": [
+              "roles/overview",
+              "roles/supervisor",
+              "roles/analista",
+              "roles/chats"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Cashouts System",
+            "pages": [
+              "guides/cashouts/submitting",
+              "guides/cashouts/reviewing",
+              "guides/cashouts/rules",
+              "guides/cashouts/stats"
+            ]
+          },
+          {
+            "group": "Operapedia",
+            "pages": [
+              "guides/operapedia/managing-companies",
+              "guides/operapedia/credentials",
+              "guides/operapedia/payment-methods",
+              "guides/operapedia/catalog"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "guides/admin/team-management",
+              "guides/admin/permissions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Centralized authentication hub with role-based access control",
+    "Real-time cashout submission and verification system with Google Sheets sync",
+    "Company credentials management with multi-category organization",
+    "Statistical dashboards and leaderboards for cashout performance",
+    "Team management for supervisors with user creation and role assignment",
+    "Master game catalog with dark/light theme support"
+  ],
+  "publicApiSurface": [
+    "/api/auth/login - User authentication endpoint",
+    "/api/cashouts - Cashout CRUD operations",
+    "/api/cashouts?status=pending - Get pending cashouts for review",
+    "Dashboard view - Main application hub with app cards",
+    "Cashouts interface - Submit, review, and track cashouts",
+    "Operapedia interface - Manage company credentials and game catalog",
+    "Role-based UI - Supervisor, Analista, and Chats roles",
+    "Team management - Create and manage user accounts (supervisor only)",
+    "Statistics and leaderboard views - Performance tracking and analytics"
+  ]
+}
