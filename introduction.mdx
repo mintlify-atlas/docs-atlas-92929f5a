@@ -1,0 +1,285 @@
+---
+title: Introduction
+description: Welcome to OPS Workspace - your centralized platform for internal operations management
+---
+
+## What is OPS Workspace?
+
+OPS Workspace is a comprehensive SaaS internal operations platform that consolidates critical business applications into a single, secure authentication hub. Built for operational teams, it provides real-time access to cashout management, company credentials, and game catalogs.
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="Hero Dark"
+/>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card
+    title="Centralized Authentication"
+    icon="shield-halved"
+    iconType="duotone"
+  >
+    Single sign-on hub with role-based access control (Supervisor, Analista, Chats) that manages permissions across all applications
+  </Card>
+  <Card
+    title="Cashouts System"
+    icon="money-bill-transfer"
+    iconType="duotone"
+  >
+    Real-time cashout submission, verification, and approval workflow with automated Google Sheets synchronization
+  </Card>
+  <Card
+    title="Operapedia"
+    icon="book"
+    iconType="duotone"
+  >
+    Centralized repository for company credentials, payment methods, promotions, and game catalogs with partner management
+  </Card>
+  <Card
+    title="Role-Based Access"
+    icon="users-gear"
+    iconType="duotone"
+  >
+    Granular permissions system that controls application visibility and features based on user roles
+  </Card>
+</CardGroup>
+
+## Platform Architecture
+
+OPS Workspace follows a modern web architecture:
+
+```
+┌─────────────────────────────────────────┐
+│        OPS Workspace Hub (/)            │
+│  - Authentication & Authorization       │
+│  - Role-based application routing       │
+│  - User profile management              │
+└───────────────┬─────────────────────────┘
+                │
+        ┌───────┴────────┐
+        │                │
+┌───────▼──────┐  ┌─────▼────────────┐
+│  Cashouts    │  │   Operapedia     │
+│  (/cashouts) │  │  (/operapedia)   │
+└──────────────┘  └──────────────────┘
+        │                │
+        └───────┬────────┘
+                │
+        ┌───────▼────────────────────────┐
+        │   Backend API (Render)         │
+        │  /api/auth/login               │
+        │  /api/cashouts                 │
+        │  /api/users                    │
+        └────────────────────────────────┘
+```
+
+### Authentication Flow
+
+The platform uses JWT-based authentication with localStorage persistence:
+
+```javascript index.html
+const API_BASE = "https://general-cashouts.onrender.com/api";
+
+// Login request
+const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value
+    })
+});
+
+const data = await res.json();
+if (!res.ok) throw new Error(data.error || "Credenciales incorrectas");
+
+// Store token and user data
+localStorage.setItem('token', data.token);
+localStorage.setItem('user', JSON.stringify(data.user));
+```
+
+<Note>
+The authentication token is stored in localStorage and automatically included in all API requests via the Authorization header.
+</Note>
+
+### Role-Based Access Control
+
+OPS Workspace implements three distinct user roles:
+
+| Role | Access Level | Applications |
+|------|-------------|-------------|
+| **Supervisor** | Full access + team management | Cashouts, Operapedia |
+| **Analista** | Standard operations access | Cashouts, Operapedia |
+| **Chats** | Limited to documentation | Operapedia only |
+
+```javascript index.html
+// Role-based application visibility
+if (user.role === 'supervisor') {
+    roleBadge.style.background = 'rgba(94, 106, 210, 0.15)';
+    roleBadge.style.color = '#6f7bf0';
+} else if (user.role === 'analista') {
+    roleBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+    roleBadge.style.color = '#2ecc71';
+} else if (user.role === 'chats') {
+    roleBadge.style.background = 'rgba(243, 156, 18, 0.15)';
+    roleBadge.style.color = '#f39c12';
+    // Hide Cashouts application for Chats role
+    cardCashouts.style.display = 'none';
+}
+```
+
+<Warning>
+The Chats role has restricted access and cannot view the Cashouts application. This is enforced both in the UI and at the API level.
+</Warning>
+
+## Core Applications
+
+### Cashouts System
+
+The Cashouts application provides:
+
+- **Real-time submission**: Operators submit cashout requests with operation codes and company information
+- **Verification queue**: Supervisors and analysts review pending cashouts with live timers
+- **Approval workflow**: Two-stage verification process with observation notes
+- **Statistics dashboard**: Comprehensive analytics by operator, shift, and company
+- **Leaderboard**: Performance tracking and ranking system
+
+```javascript cashouts/index.html
+const API_BASE = "https://general-cashouts.onrender.com/api";
+
+// Submit cashout with automatic operator identification
+await apiFetch(`/api/cashouts`, {
+    method: "POST",
+    body: JSON.stringify({
+        operationCode: document.getElementById('operationCode').value,
+        operatorName: currentUser.fullName, // Auto-filled from token
+        company: document.getElementById('company').value,
+        observacion: observationText
+    })
+});
+```
+
+### Operapedia
+
+The Operapedia application manages:
+
+- **Credentials**: Game login credentials organized by company
+- **Payment methods**: Deposit and cashout methods with limits
+- **Game catalog**: Master list of available games with links
+- **Partner management**: Company grouping by operational partners
+- **Promotions**: Active promotional campaigns per company
+- **Documentation**: Terms, conditions, and operational notes
+
+<Info>
+Operapedia uses Firebase Realtime Database for live synchronization of game toggles and catalog updates across all users.
+</Info>
+
+## API Backend
+
+The backend API is hosted on Render and provides:
+
+**Base URL**: `https://general-cashouts.onrender.com/api`
+
+**Key Endpoints**:
+
+- `POST /auth/login` - User authentication
+- `GET /cashouts` - Retrieve cashouts with filters
+- `POST /cashouts` - Submit new cashout
+- `PUT /cashouts/:id` - Update cashout status
+- `GET /users` - List users (supervisor only)
+- `POST /users` - Create user account (supervisor only)
+- `DELETE /users/:id` - Remove user (supervisor only)
+
+```javascript cashouts/index.html
+// API wrapper with automatic token injection
+async function apiFetch(endpoint, options = {}) {
+    const headers = { 
+        'Content-Type': 'application/json', 
+        ...options.headers 
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const response = await fetch(`${API_BASE}${endpoint}`, { 
+        ...options, 
+        headers 
+    });
+    
+    // Handle unauthorized access
+    if (response.status === 401 || response.status === 403) {
+        cerrarSesion();
+        throw new Error("Sesión expirada o acceso denegado");
+    }
+    return response;
+}
+```
+
+<Warning>
+All API endpoints (except `/auth/login`) require a valid JWT token in the Authorization header. Expired or invalid tokens result in automatic logout.
+</Warning>
+
+## Technology Stack
+
+<CardGroup cols={2}>
+  <Card title="Frontend" icon="code">
+    - Vanilla JavaScript
+    - CSS Custom Properties
+    - Inter Font Family
+    - Responsive Grid Layouts
+  </Card>
+  <Card title="Backend" icon="server">
+    - Node.js REST API
+    - JWT Authentication
+    - MongoDB Database
+    - Hosted on Render
+  </Card>
+  <Card title="Real-time Sync" icon="database">
+    - Firebase Realtime Database
+    - Live game catalog updates
+    - Instant toggle synchronization
+  </Card>
+  <Card title="Integration" icon="link">
+    - Google Sheets API
+    - Automatic data export
+    - Cashout record sync
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart Guide"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get logged in and access your first application in under 2 minutes
+  </Card>
+  <Card
+    title="Core Features"
+    icon="sparkles"
+    href="/features/authentication"
+  >
+    Explore authentication, cashouts, and Operapedia
+  </Card>
+  <Card
+    title="User Roles"
+    icon="user-shield"
+    href="/roles/overview"
+  >
+    Understand role-based permissions and access levels
+  </Card>
+  <Card
+    title="Cashouts Guide"
+    icon="money-bill-wave"
+    href="/guides/cashouts/submitting"
+  >
+    Submit and review cashout requests
+  </Card>
+</CardGroup>

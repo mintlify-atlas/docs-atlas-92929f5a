@@ -1,122 +1,85 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "OPS Workspace",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "mode": "custom",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#5e6ad2",
+    "light": "#6f7bf0",
+    "dark": "#4a56c4"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/PiCab-LP/OPS-Workspace"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/PiCab-LP/OPS-Workspace"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/authentication",
+              "features/cashouts",
+              "features/operapedia"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "User Roles",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "roles/overview",
+              "roles/supervisor",
+              "roles/analista",
+              "roles/chats"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Guides",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Cashouts System",
             "pages": [
-              "api-reference/introduction"
+              "guides/cashouts/submitting",
+              "guides/cashouts/reviewing",
+              "guides/cashouts/rules",
+              "guides/cashouts/stats"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Operapedia",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "guides/operapedia/managing-companies",
+              "guides/operapedia/credentials",
+              "guides/operapedia/payment-methods",
+              "guides/operapedia/catalog"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "guides/admin/team-management",
+              "guides/admin/permissions"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

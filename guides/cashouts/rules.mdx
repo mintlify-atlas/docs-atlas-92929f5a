@@ -1,0 +1,283 @@
+---
+title: Cashout Rules
+description: Manage cashout rules per company with search and edit functionality
+---
+
+This guide covers the cashout rules system for managing company-specific procedures.
+
+## Rules Overview
+
+The rules section displays cashout procedures for each company registered in the system.
+
+### Accessing Rules
+
+Click the **"📜 Cashout Rules"** button in the sidebar:
+
+```javascript
+rulesBtn.addEventListener('click', () => {
+  desactivarBotones();
+  rulesBtn.classList.add('active');
+  rulesSection.style.display = 'block';
+  cargarReglasDesdeBD();
+});
+```
+
+## Loading Rules from Database
+
+<Steps>
+  <Step title="Fetch Rules">
+    Rules are loaded from the API on page load and when viewing the rules section:
+
+    ```javascript
+    async function cargarReglasDesdeBD(silencioso = false) {
+      const res = await apiFetch(`/rules`);
+      const json = await res.json();
+      const rules = json.data;
+      
+      actualizarSelectsConReglas(rules);
+      // ... render rules grid
+    }
+    ```
+
+    **API Endpoint**: `GET /api/rules`
+  </Step>
+
+  <Step title="Update Company Selects">
+    Rules automatically populate company dropdowns across the app:
+
+    ```javascript
+    function actualizarSelectsConReglas(rules) {
+      const selects = [
+        document.getElementById('company'),
+        document.getElementById('statsCompanyFilter')
+      ];
+      
+      selects.forEach(select => {
+        if(!select) return;
+        const val = select.value; 
+        select.innerHTML = select.id === 'company' 
+          ? '<option value="">Seleccione una compañía</option>' 
+          : '<option value="">Todas las compañías</option>';
+        rules.forEach(r => select.appendChild(new Option(r.name, r.name)));
+        if(Array.from(select.options).some(o => o.value === val)) select.value = val;
+      });
+    }
+    ```
+  </Step>
+</Steps>
+
+## Rule Card Display
+
+Each company rule is displayed in a card with:
+
+- **Company Name**: Header (e.g., "Betsson", "Inkabet")
+- **Rule Text**: Pre-formatted text with company-specific procedures
+- **Edit Button**: ✏️ Only visible to supervisors
+
+```javascript
+rulesGrid.innerHTML = rules.map(rule => `
+  <div class="rule-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>${rule.name}</h3>
+      ${isSupervisor ? `<button onclick="toggleEditRegla('${rule._id}')" ...>✏️ Editar</button>` : ''}
+    </div>
+    <div id="view-mode-${rule._id}">${rule.ruleText || '<i>Sin reglas.</i>'}</div>
+    <div id="edit-mode-${rule._id}" style="display: none;">
+      <textarea class="rule-text" id="rule-text-${rule._id}">${rule.ruleText || ''}</textarea>
+      <button onclick="guardarEdicionRegla('${rule._id}')">💾 Guardar</button>
+      <button onclick="toggleEditRegla('${rule._id}')">❌ Cancelar</button>
+    </div>
+  </div>
+`).join('');
+```
+
+## Search Functionality
+
+The search box filters companies in real-time:
+
+```javascript
+searchRulesInput.addEventListener('input', (e) => {
+  const term = e.target.value.toLowerCase();
+  document.querySelectorAll('#rulesGrid .rule-card').forEach(card => {
+    const companyName = card.querySelector('h3').textContent.toLowerCase();
+    card.style.display = companyName.includes(term) ? '' : 'none';
+  });
+});
+```
+
+**HTML Input**:
+```html
+<input 
+  type="text" 
+  id="searchRules" 
+  placeholder="🔍 Buscar compañía por nombre..."
+  style="width: 100%; padding: 14px; border-radius: 10px;"
+>
+```
+
+## Editing Rules (Supervisor Only)
+
+<Accordion title="Edit Mode Toggle">
+  Supervisors can click the **✏️ Editar** button to toggle between view and edit mode:
+
+  ```javascript
+  window.toggleEditRegla = (id) => {
+    const v = document.getElementById(`view-mode-${id}`);
+    const e = document.getElementById(`edit-mode-${id}`);
+    v.style.display = v.style.display === 'none' ? 'block' : 'none';
+    e.style.display = e.style.display === 'none' ? 'block' : 'none';
+  };
+  ```
+</Accordion>
+
+<Accordion title="Save Changes">
+  After editing the textarea, click **💾 Guardar** to save:
+
+  ```javascript
+  window.guardarEdicionRegla = async (id) => {
+    const text = document.getElementById(`rule-text-${id}`).value.trim();
+    const btn = document.getElementById(`btn-save-${id}`);
+    btn.disabled = true; 
+    btn.textContent = "⏳";
+    
+    try {
+      await apiFetch(`/rules/${id}`, { 
+        method: 'PUT', 
+        body: JSON.stringify({ ruleText: text }) 
+      });
+      
+      document.getElementById(`view-mode-${id}`).innerHTML = text || '<i>Sin reglas.</i>';
+      toggleEditRegla(id);
+      showNotification("Regla actualizada");
+    } catch(e) { 
+      showNotification("Error", "error"); 
+    } finally { 
+      btn.disabled = false; 
+      btn.textContent = "💾 Guardar"; 
+    }
+  };
+  ```
+
+  **API Endpoint**: `PUT /api/rules/{id}`
+</Accordion>
+
+## Adding New Companies (Supervisor Only)
+
+Supervisors see a hidden form to add new companies:
+
+```html
+<div id="newCompanyContainer" style="display: none;">
+  <h3>+ Agregar Nueva Compañía</h3>
+  <input type="text" id="newCompanyName" placeholder="Nombre de la nueva compañía">
+  <button id="btnCreateCompany">Guardar</button>
+</div>
+```
+
+**Display Logic**:
+```javascript
+const isSupervisor = currentUser.role === 'supervisor';
+if (newCompanyContainer) {
+  newCompanyContainer.style.display = isSupervisor ? 'block' : 'none';
+}
+```
+
+## Role-Based Access Control
+
+| Feature | Analista | Supervisor |
+|---------|----------|------------|
+| View Rules | ✅ | ✅ |
+| Search Rules | ✅ | ✅ |
+| Edit Rules | ❌ | ✅ |
+| Add Companies | ❌ | ✅ |
+
+## Rule Text Format
+
+Rule text is stored as plain text with `white-space: pre-wrap` for formatting:
+
+```css
+white-space: pre-wrap; 
+color: var(--tertiary); 
+padding: 15px; 
+border-radius: 10px; 
+min-height: 60px;
+```
+
+This preserves line breaks and spacing in the text area.
+
+## API Reference
+
+### GET /api/rules
+
+**Response**:
+```json
+{
+  "data": [
+    {
+      "_id": "...",
+      "name": "Betsson",
+      "ruleText": "1. Verificar saldo...\n2. Confirmar con cliente...\n3. Procesar retiro..."
+    },
+    {
+      "_id": "...",
+      "name": "Inkabet",
+      "ruleText": "Procedimiento especial para Inkabet..."
+    }
+  ]
+}
+```
+
+### PUT /api/rules/:id
+
+**Body**:
+```json
+{
+  "ruleText": "Updated procedures for this company..."
+}
+```
+
+**Response**: Updated rule object
+
+### POST /api/rules
+
+**Body**:
+```json
+{
+  "name": "New Company Name",
+  "ruleText": ""
+}
+```
+
+**Response**: Created rule object
+
+## Loading States
+
+<Steps>
+  <Step title="Initial Load">
+    Shows loading message while fetching:
+    ```javascript
+    rulesGrid.innerHTML = '<p style="text-align: center;">Cargando reglas...</p>';
+    ```
+  </Step>
+
+  <Step title="Empty State">
+    If no rules exist:
+    ```javascript
+    if (rules.length === 0) {
+      rulesGrid.innerHTML = '<p style="text-align:center;">No hay compañías.</p>';
+    }
+    ```
+  </Step>
+
+  <Step title="Silent Load">
+    On app initialization, rules load silently to populate selects:
+    ```javascript
+    cargarReglasDesdeBD(true); // silencioso = true
+    ```
+  </Step>
+</Steps>
+
+## CSS Classes
+
+- `.rule-card`: Card container with border and padding
+- `.rule-text`: Textarea for editing (defined in style.css)
+- `.rules-grid`: Grid layout for multiple cards

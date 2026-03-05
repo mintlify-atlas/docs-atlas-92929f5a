@@ -1,80 +1,390 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get up and running with OPS Workspace in under 2 minutes
 ---
 
-## Get started in three steps
+## Welcome to OPS Workspace
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will walk you through logging into OPS Workspace and accessing your first application. You'll be operational in just a few steps.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+Before you begin, ensure you have received your login credentials from your supervisor. If you don't have credentials yet, contact your team administrator.
 </Note>
+
+## Login to OPS Workspace
+
+<Steps>
+  <Step title="Navigate to the Hub">
+    Open your web browser and go to the OPS Workspace hub:
+    
+    ```
+    https://your-ops-workspace-domain.com/
+    ```
+    
+    You'll see the login screen with the OPS Workspace branding.
+    
+    <img src="/images/login-screen.png" alt="OPS Workspace Login" />
+  </Step>
+
+  <Step title="Enter Your Credentials">
+    Fill in your username and password in the login form:
+    
+    ```html index.html
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Usuario" required>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <button type="submit" class="btn-primary" id="loginBtn">Ingresar</button>
+    </form>
+    ```
+    
+    Click the **Ingresar** button to authenticate.
+    
+    <Warning>
+    Passwords are case-sensitive. Make sure Caps Lock is off and enter your credentials exactly as provided.
+    </Warning>
+  </Step>
+
+  <Step title="Authentication Process">
+    When you submit the form, your credentials are sent to the authentication API:
+    
+    ```javascript index.html
+    const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+        })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Credenciales incorrectas");
+
+    // Store authentication token and user data
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    ```
+    
+    The system validates your credentials and returns:
+    - A **JWT authentication token** (for secure API access)
+    - Your **user profile** (name, username, role)
+    
+    <Info>
+    The authentication token is automatically stored in your browser and used for all subsequent requests.
+    </Info>
+  </Step>
+
+  <Step title="Access the Dashboard">
+    Upon successful login, you'll be redirected to your personalized dashboard:
+    
+    ```javascript index.html
+    function mostrarDashboard(user) {
+        loginView.style.display = 'none';
+        dashboardView.style.display = 'block';
+        
+        // Display user's first name in navbar
+        const primerNombre = user.fullName.split(' ')[0];
+        document.getElementById('triggerName').textContent = primerNombre;
+
+        // Set role badge with color coding
+        const roleBadge = document.getElementById('profileRole');
+        roleBadge.textContent = user.role.toUpperCase();
+    }
+    ```
+    
+    Your dashboard displays:
+    - Your name and role badge in the navbar
+    - Available applications based on your role
+    - Quick access cards to each application
+  </Step>
+</Steps>
+
+## Understanding Your Role
+
+Your access level is determined by your assigned role. Here's what you'll see:
+
+<Tabs>
+  <Tab title="Supervisor">
+    **Full Platform Access**
+    
+    As a Supervisor, you have access to:
+    - ✅ Cashouts application (submit and review)
+    - ✅ Operapedia (view and edit)
+    - ✅ Team management panel
+    - ✅ Statistics and analytics
+    - ✅ User creation and deletion
+    
+    Your role badge appears in **blue**:
+    
+    ```javascript index.html
+    if (user.role === 'supervisor') {
+        roleBadge.style.background = 'rgba(94, 106, 210, 0.15)';
+        roleBadge.style.color = '#6f7bf0';
+        roleBadge.style.border = '1px solid rgba(94, 106, 210, 0.3)';
+        
+        // Show team management button
+        manageTeamBtn.style.display = 'block';
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Analista">
+    **Standard Operations Access**
+    
+    As an Analista, you have access to:
+    - ✅ Cashouts application (submit and review)
+    - ✅ Operapedia (view only)
+    - ✅ Statistics and leaderboard
+    - ❌ Team management (restricted)
+    
+    Your role badge appears in **green**:
+    
+    ```javascript index.html
+    if (user.role === 'analista') {
+        roleBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+        roleBadge.style.color = '#2ecc71';
+        roleBadge.style.border = '1px solid rgba(46, 204, 113, 0.3)';
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Chats">
+    **Documentation Access Only**
+    
+    As a Chats user, you have access to:
+    - ✅ Operapedia (view only)
+    - ❌ Cashouts application (hidden)
+    - ❌ Team management (restricted)
+    
+    Your role badge appears in **orange**:
+    
+    ```javascript index.html
+    if (user.role === 'chats') {
+        roleBadge.style.background = 'rgba(243, 156, 18, 0.15)';
+        roleBadge.style.color = '#f39c12';
+        roleBadge.style.border = '1px solid rgba(243, 156, 18, 0.3)';
+        
+        // Hide Cashouts card
+        cardCashouts.style.display = 'none';
+    }
+    ```
+    
+    <Info>
+    The Chats role is designed for support team members who need access to company information but not operational systems.
+    </Info>
+  </Tab>
+</Tabs>
+
+## Accessing Applications
+
+### Navigate to Cashouts
+
+Click on the **Cashouts** card from your dashboard:
+
+```html index.html
+<a href="/cashouts/" class="app-card" id="card-cashouts">
+    <div class="app-icon">🌴</div>
+    <h3 class="app-title">Cashouts</h3>
+    <p class="app-desc">Sistema de registro y verificación de cashouts en tiempo real con sincronización a Google Sheets.</p>
+</a>
+```
+
+This opens the Cashouts application where you can:
+- Submit new cashout requests
+- Review pending cashouts (if authorized)
+- View statistics and leaderboards
+- Check cashout rules by company
+
+<Note>
+When you access Cashouts, your authentication token is automatically passed, and the application pre-fills your operator name based on your logged-in identity.
+</Note>
+
+### Navigate to Operapedia
+
+Click on the **Operapedia** card from your dashboard:
+
+```html index.html
+<a href="/operapedia/" class="app-card" id="card-operapedia">
+    <div class="app-icon">📓</div>
+    <h3 class="app-title">Operapedia</h3>
+    <p class="app-desc">Panel de credenciales, métodos de pago, promociones y catálogo de juegos de nuestras compañías.</p>
+</a>
+```
+
+This opens Operapedia where you can:
+- Search and view game credentials
+- Check payment methods and limits
+- Review active promotions
+- Access terms and conditions
+- View company contact channels
+
+## Your Profile Menu
+
+In the top-right corner of the dashboard, you'll find your profile menu:
+
+```html index.html
+<div class="profile-trigger" id="profileTrigger" onclick="toggleProfileMenu()">
+    <span style="font-size: 18px;">👤</span>
+    <span id="triggerName" style="font-weight: 600;">Nombre</span>
+    <span style="font-size: 10px; opacity: 0.5;">▼</span>
+</div>
+```
+
+Click on your name to view:
+- Your full name
+- Username
+- Role badge
+- **Cerrar Sesión** (logout) button
+
+### Logging Out
+
+To end your session securely:
+
+<Steps>
+  <Step title="Open Profile Menu">
+    Click on your name in the top-right corner to expand the dropdown menu.
+  </Step>
+  
+  <Step title="Click Cerrar Sesión">
+    Click the red **Cerrar Sesión** button at the bottom of the dropdown.
+  </Step>
+  
+  <Step title="Session Cleared">
+    Your authentication token and user data are removed from localStorage:
+    
+    ```javascript index.html
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        location.reload();
+    }
+    ```
+    
+    You'll be redirected to the login screen.
+  </Step>
+</Steps>
+
+<Warning>
+Always log out when using a shared computer to protect your account security.
+</Warning>
+
+## Quick Tips
+
+<AccordionGroup>
+  <Accordion title="My login keeps failing">
+    Common causes:
+    - **Incorrect credentials**: Double-check your username and password
+    - **Caps Lock is on**: Passwords are case-sensitive
+    - **Account not created**: Contact your supervisor to create your account
+    - **Network issues**: Verify you can reach `https://general-cashouts.onrender.com/api`
+    
+    If the error persists, check the browser console for detailed error messages.
+  </Accordion>
+  
+  <Accordion title="I don't see all applications">
+    Application visibility is controlled by your role:
+    - **Chats role**: Only sees Operapedia
+    - **Analista role**: Sees both Cashouts and Operapedia
+    - **Supervisor role**: Sees all applications plus team management
+    
+    If you believe your role is incorrect, contact your supervisor.
+  </Accordion>
+  
+  <Accordion title="My session expired">
+    JWT tokens expire after a period of inactivity. When this happens:
+    
+    ```javascript cashouts/index.html
+    async function apiFetch(endpoint, options = {}) {
+        const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+        
+        // Auto-logout on token expiration
+        if (response.status === 401 || response.status === 403) {
+            cerrarSesion();
+            throw new Error("Sesión expirada o acceso denegado");
+        }
+        return response;
+    }
+    ```
+    
+    You'll be automatically logged out and redirected to the hub. Simply log in again to continue.
+  </Accordion>
+  
+  <Accordion title="Can I use multiple devices?">
+    Yes! Your authentication token is stored locally in each browser. You can:
+    - Log in on multiple devices simultaneously
+    - Switch between desktop and mobile
+    - Access from different browsers
+    
+    Each device maintains its own session independently.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+If you encounter issues during login:
+
+### Error: "Credenciales incorrectas"
+
+```javascript index.html
+const data = await res.json();
+if (!res.ok) throw new Error(data.error || "Credenciales incorrectas");
+```
+
+**Solution**: Verify your username and password are correct. Contact your supervisor if you've forgotten your credentials.
+
+### Error: "Sesión expirada o acceso denegado"
+
+This occurs when:
+- Your JWT token has expired
+- Your account permissions have changed
+- Your account was deactivated
+
+**Solution**: Log in again to get a fresh token. If the issue persists, contact your supervisor.
+
+### Application not loading after login
+
+Check the browser console for errors. Common causes:
+- **API endpoint unreachable**: Network connectivity issue
+- **Blocked by CORS**: Browser security restriction
+- **Invalid token**: Token was corrupted in localStorage
+
+**Solution**: Try clearing your browser cache and localStorage, then log in again.
+
+## Next Steps
+
+Now that you're logged in, explore the platform:
+
+<CardGroup cols={2}>
+  <Card
+    title="Submit a Cashout"
+    icon="money-bill-transfer"
+    href="/guides/cashouts/submitting"
+  >
+    Learn how to create and submit cashout requests
+  </Card>
+  <Card
+    title="Search Credentials"
+    icon="magnifying-glass"
+    href="/guides/operapedia/credentials"
+  >
+    Find game credentials and company information in Operapedia
+  </Card>
+  <Card
+    title="Review Queue"
+    icon="list-check"
+    href="/guides/cashouts/reviewing"
+  >
+    Supervisors and Analistas: Review pending cashouts
+  </Card>
+  <Card
+    title="View Statistics"
+    icon="chart-line"
+    href="/guides/cashouts/stats"
+  >
+    Analyze performance metrics and leaderboards
+  </Card>
+</CardGroup>
+
+<Info>
+**Pro Tip**: Bookmark the OPS Workspace hub URL for quick access. Your login session persists across browser restarts until you explicitly log out or the token expires.
+</Info>

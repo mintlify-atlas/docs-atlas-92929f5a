@@ -1,0 +1,123 @@
+---
+title: 'Supervisor Role'
+description: 'Full access role with team management and cashout review capabilities'
+---
+
+## Overview
+
+The **Supervisor** role has the highest level of access in OPS Workspace. Users with this role have full permissions across both applications and are responsible for team management, cashout review, and system oversight.
+
+## Badge Appearance
+
+Supervisors are identified by a purple/blue badge in the profile dropdown:
+
+**Badge Style:**
+- Background: `rgba(94, 106, 210, 0.15)` (light purple-blue)
+- Text Color: `#6f7bf0` (bright purple-blue)
+- Border: `1px solid rgba(94, 106, 210, 0.3)`
+- Label: **SUPERVISOR** (uppercase)
+
+## Permissions
+
+### Full Application Access
+
+Supervisors can access both workspace applications:
+
+| Application | Access Level |
+|-------------|-------------|
+| **Cashouts** | ✅ Full Access |
+| **Operapedia** | ✅ Full Access |
+
+### Cashouts App Capabilities
+
+- **Submit cashouts** - Create new cashout records
+- **Review cashouts** - Verify and approve cashout submissions from analysts
+- **View all records** - Access complete cashout history
+- **Sync to Google Sheets** - Trigger manual synchronization if needed
+- **Real-time monitoring** - Track cashout status updates
+
+### Operapedia App Capabilities
+
+- **View credentials** - Access login credentials for company platforms
+- **View payment methods** - See available payment processors and methods
+- **View promotions** - Access current promotional offers and campaigns
+- **Browse game catalog** - View complete game library
+
+## Responsibilities
+
+### Team Management
+
+Supervisors are responsible for:
+
+- Overseeing analyst performance
+- Reviewing cashout submissions for accuracy
+- Ensuring compliance with cashout procedures
+- Training new team members on system usage
+
+### Quality Control
+
+<Note>
+Supervisors should regularly review cashout submissions to maintain data quality and identify any patterns of errors or issues.
+</Note>
+
+Key quality control activities:
+
+1. **Verification** - Confirm cashout details match source documentation
+2. **Validation** - Ensure all required fields are properly filled
+3. **Error correction** - Work with analysts to fix mistakes
+4. **Reporting** - Track metrics and identify improvement areas
+
+## UI Differences
+
+### Dashboard View
+
+Supervisors see the full workspace dashboard with both application cards visible:
+
+```html
+<!-- Both cards are displayed -->
+<a href="/cashouts/" class="app-card" id="card-cashouts" style="display: flex;">
+  <div class="app-icon">🌴</div>
+  <h3 class="app-title">Cashouts</h3>
+  ...
+</a>
+
+<a href="/operapedia/" class="app-card" id="card-operapedia" style="display: flex;">
+  <div class="app-icon">📓</div>
+  <h3 class="app-title">Operapedia</h3>
+  ...
+</a>
+```
+
+### Profile Dropdown
+
+The supervisor badge is applied in the profile dropdown (lines 240-243 in source):
+
+```javascript
+if (user.role === 'supervisor') {
+    roleBadge.style.background = 'rgba(94, 106, 210, 0.15)';
+    roleBadge.style.color = '#6f7bf0';
+    roleBadge.style.border = '1px solid rgba(94, 106, 210, 0.3)';
+}
+```
+
+## Best Practices
+
+### Security
+
+- **Never share supervisor credentials** - These accounts have elevated privileges
+- **Log out when away** - Always use the logout button in the profile dropdown
+- **Review permissions regularly** - Ensure team members have appropriate role assignments
+
+### Workflow
+
+1. Start day by reviewing pending cashouts
+2. Monitor real-time submissions from analysts
+3. Verify accuracy before final approval
+4. Check Google Sheets sync status
+5. Address any issues or questions from team
+
+## Related Documentation
+
+- [User Roles Overview](/roles/overview) - Complete role comparison
+- [Analista Role](/roles/analista) - Understanding analyst permissions
+- [Chats Role](/roles/chats) - Restricted access role

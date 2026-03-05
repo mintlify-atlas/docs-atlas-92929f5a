@@ -1,0 +1,386 @@
+---
+title: "Managing Payment Methods"
+description: "Configure deposit and cashout payment methods across all 8 information tabs"
+---
+
+## Overview
+
+Operapedia organizes company information into **8 tabs** covering different operational aspects. This guide focuses on the tabs related to payment methods and other company information.
+
+## The 8 Information Tabs
+
+Each company has the following tabs:
+
+| Tab | Icon | Purpose | Data Type |
+|-----|------|---------|----------|
+| **Credenciales** | 🎮 | Game credentials | Array of game objects |
+| **Depósito** | 💰 | Deposit payment methods | Array of payment methods |
+| **Cashout** | 💸 | Withdrawal methods | Array of payment methods |
+| **Consideraciones** | 📋 | Cashout considerations | Plain text |
+| **Promociones** | 🎁 | Active promotions | Array of promotions |
+| **Términos** | 📜 | Terms and conditions | URL or text |
+| **Canales** | 📞 | Support channels | Array of contact methods |
+| **Notas** | 📝 | Internal notes timeline | Array of timestamped notes |
+
+<Note>
+  The **Credenciales** tab is covered in detail in the [Game Credentials guide](/guides/operapedia/credentials).
+</Note>
+
+## Depósito Tab (💰)
+
+Manage deposit payment methods with provider details and transaction limits.
+
+### Data Structure
+
+Each deposit method includes:
+- **Método**: Payment method name (e.g., "PIX", "Credit Card", "Bank Transfer")
+- **Proveedor**: Payment provider/processor
+- **Monto Mínimo**: Minimum deposit amount
+- **Monto Máximo**: Maximum deposit amount
+
+### Viewing Deposit Methods (Read Mode)
+
+Methods are displayed as a list or table showing all four fields.
+
+### Editing Deposit Methods (Edit Mode)
+
+<Steps>
+  <Step title="Enable Edit Mode">
+    Click **Edit** in navbar and authenticate.
+  </Step>
+  
+  <Step title="Navigate to Depósito Tab">
+    Select a company, then click the **💰 Depósito** tab.
+  </Step>
+  
+  <Step title="Add or Edit Methods">
+    **Adding a new method:**
+    - Click **+ Agregar método de depósito**
+    - Fill in all four fields
+    - Save the method
+    
+    **Editing existing methods:**
+    - Click the edit icon on a method row
+    - Modify fields as needed
+    - Save changes
+    
+    **Deleting methods:**
+    - Click the delete icon
+    - Confirm deletion
+  </Step>
+  
+  <Step title="Save Changes">
+    Click **Guardar** to persist all deposit method changes to Firebase.
+  </Step>
+</Steps>
+
+### Example Deposit Methods
+
+```json
+metodosDeposito: [
+  {
+    metodo: "PIX",
+    proveedor: "PaymentGateway123",
+    montoMinimo: "R$ 50",
+    montoMaximo: "R$ 10,000"
+  },
+  {
+    metodo: "Credit Card",
+    proveedor: "Stripe",
+    montoMinimo: "R$ 20",
+    montoMaximo: "R$ 5,000"
+  }
+]
+```
+
+## Cashout Tab (💸)
+
+Manage withdrawal/cashout payment methods with the same structure as deposits.
+
+### Data Structure
+
+Identical to deposit methods:
+- **Método**: Withdrawal method name
+- **Proveedor**: Payment processor
+- **Monto Mínimo**: Minimum withdrawal amount
+- **Monto Máximo**: Maximum withdrawal amount
+
+### Managing Cashout Methods
+
+The workflow is identical to deposit methods but stored separately at `companies/{id}/metodosCashout`.
+
+<Tabs>
+  <Tab title="Common Cashout Methods">
+    - Bank Transfer
+    - PIX (Brazil)
+    - E-wallets (PayPal, Skrill, Neteller)
+    - Cryptocurrency
+    - Wire Transfer
+  </Tab>
+  
+  <Tab title="Important Notes">
+    - Cashout limits often differ from deposit limits
+    - Some methods may be deposit-only or withdrawal-only
+    - Provider processing times vary
+    - Document any special requirements in Consideraciones tab
+  </Tab>
+</Tabs>
+
+## Consideraciones Tab (📋)
+
+Free-form text field for cashout considerations and special instructions.
+
+### Use Cases
+
+- Special verification requirements
+- Processing time expectations
+- Country/region restrictions
+- Document requirements for large withdrawals
+- Special procedures for specific payment methods
+
+### Editing Considerations
+
+<Steps>
+  <Step title="Navigate to Consideraciones Tab">
+    Select company → **📋 Consideraciones** tab
+  </Step>
+  
+  <Step title="Edit in Text Area">
+    In edit mode, the text displays in a `<textarea>` for easy editing.
+    
+    In read mode, it displays as formatted text with line breaks preserved.
+  </Step>
+  
+  <Step title="Save Changes">
+    Click **Guardar** to save to `companies/{id}/consideracionesCashout`.
+  </Step>
+</Steps>
+
+## Promociones Tab (🎁)
+
+Manage active promotions, bonuses, and special offers.
+
+### Data Structure
+
+Each promotion has:
+- **Título**: Promotion name/title
+- **Descripción**: Detailed description of the offer
+
+### Managing Promotions
+
+<Steps>
+  <Step title="Add Promotion">
+    Click **+ Agregar promoción** in edit mode.
+    
+    Fill in:
+    - Title (e.g., "Welcome Bonus 100%")
+    - Description (terms, conditions, expiration)
+  </Step>
+  
+  <Step title="Edit Promotion">
+    Click edit icon on existing promotion to modify title or description.
+  </Step>
+  
+  <Step title="Delete Promotion">
+    Click delete icon and confirm to remove expired promotions.
+  </Step>
+</Steps>
+
+### Example Promotions
+
+```json
+promociones: [
+  {
+    titulo: "Welcome Bonus 100%",
+    descripcion: "Deposit R$100, get R$100 bonus. 30x wagering requirement. Valid until 2026-03-31."
+  },
+  {
+    titulo: "Free Spins Friday",
+    descripcion: "50 free spins every Friday on selected slots. No deposit required."
+  }
+]
+```
+
+## Términos Tab (📜)
+
+Store the terms and conditions URL or full text.
+
+### Data Types
+
+- **URL**: Link to external terms and conditions page
+- **Plain Text**: Full terms text stored directly
+
+### Display Modes
+
+**Read Mode:**
+- If URL: Displays as a clickable button that opens in new tab
+- If plain text: Displays formatted text
+
+**Edit Mode:**
+- Input field for URL or textarea for full text
+- Save to `companies/{id}/terminosLink`
+
+<Info>
+  Prefer using URLs to external terms pages to avoid duplicating long text. Only use plain text if the company has no hosted terms page.
+</Info>
+
+## Canales Tab (📞)
+
+List of customer support contact channels.
+
+### Data Structure
+
+Canales can be stored as:
+
+**Simple strings:**
+```json
+canales: [
+  "support@company.com",
+  "+55 11 9999-9999",
+  "https://t.me/company_support"
+]
+```
+
+**Structured objects:**
+```json
+canales: [
+  { nombre: "Email", contacto: "support@company.com" },
+  { nombre: "WhatsApp", contacto: "+55 11 9999-9999" },
+  { nombre: "Telegram", contacto: "@company_support" }
+]
+```
+
+### Managing Channels
+
+<Steps>
+  <Step title="Add Channel">
+    Click **+ Agregar canal** in edit mode.
+    
+    Enter:
+    - Contact method (email, phone, chat link, etc.)
+  </Step>
+  
+  <Step title="Delete Channel">
+    Click delete icon next to a channel to remove it.
+  </Step>
+</Steps>
+
+## Notas Tab (📝)
+
+Internal timeline of notes with timestamps.
+
+### Data Structure
+
+```json
+notas: [
+  {
+    texto: "Updated payment provider for PIX",
+    fecha: "2026-03-05T14:30:00.000Z"
+  },
+  {
+    texto: "Increased maximum withdrawal limit",
+    fecha: "2026-03-04T10:15:00.000Z"
+  }
+]
+```
+
+### Timeline Display
+
+Notes are displayed in **descending chronological order** (newest first) with format:
+
+```
+📌 05 Mar 2026 14:30
+Updated payment provider for PIX
+```
+
+### Managing Notes
+
+<Steps>
+  <Step title="Add Note">
+    In edit mode, use the **+ Agregar nota** form at the top.
+    
+    - Type note text in textarea
+    - Click **Agregar** to save with current timestamp
+  </Step>
+  
+  <Step title="Edit Existing Note">
+    In edit mode, each note becomes an editable textarea.
+    
+    - Modify the note text
+    - Click **Guardar** to update
+  </Step>
+  
+  <Step title="Delete Note">
+    Click the delete button next to a note and confirm deletion.
+  </Step>
+</Steps>
+
+<Tip>
+  Use notes to track important changes, decisions, or issues that aren't appropriate for other tabs. This creates an audit trail of company information updates.
+</Tip>
+
+## Tab Navigation
+
+The tabs use JavaScript-based navigation:
+
+```javascript operapedia/index.html
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const targetTab = tab.dataset.tab;
+    
+    // Hide all panes
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('tab-pane-active');
+    });
+    
+    // Show selected pane
+    document.querySelector(`[data-pane="${targetTab}"]`).classList.add('tab-pane-active');
+  });
+});
+```
+
+### Unsaved Changes Warning
+
+When in edit mode, attempting to change tabs triggers a confirmation modal:
+
+```javascript operapedia/app.js
+const confirmed = await showConfirmModal(
+  'Cambios sin guardar',
+  '¿Deseas salir del modo edición sin guardar?',
+  'Salir',
+  'Cancelar'
+);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Payment Method Accuracy">
+    - Verify min/max amounts with the provider
+    - Update limits when providers change terms
+    - Include currency symbols (R$, USD, etc.)
+    - Document processing times in Consideraciones
+  </Accordion>
+  
+  <Accordion title="Promotion Management">
+    - Remove expired promotions promptly
+    - Include expiration dates in descriptions
+    - Document wagering requirements clearly
+    - Link to full terms in Términos tab
+  </Accordion>
+  
+  <Accordion title="Contact Channels">
+    - Test all contact methods before adding
+    - Include operating hours if applicable
+    - Specify language support if multilingual
+    - Keep emergency contacts at the top
+  </Accordion>
+  
+  <Accordion title="Notes Usage">
+    - Date significant changes in notes
+    - Reference who made the change
+    - Link to related documentation
+    - Keep notes concise and actionable
+  </Accordion>
+</AccordionGroup>

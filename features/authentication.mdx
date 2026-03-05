@@ -1,0 +1,358 @@
+---
+title: 'Authentication System'
+description: 'JWT-based authentication with role-based access control for OPS Workspace'
+icon: 'lock'
+---
+
+## Overview
+
+OPS Workspace implements a secure JWT-based authentication system with role-based access control. The system validates users against a centralized backend and manages sessions across all applications.
+
+## Authentication Flow
+
+<Steps>
+  <Step title="User Login">
+    Users enter their credentials on the login page at `/` (index.html:94-104)
+    ```html
+    <form id="loginForm">
+      <input type="text" id="username" placeholder="Usuario" required>
+      <input type="password" id="password" placeholder="Contraseña" required>
+      <button type="submit" class="btn-primary">Ingresar</button>
+    </form>
+    ```
+  </Step>
+
+  <Step title="API Validation">
+    Credentials are sent to the authentication endpoint:
+    ```javascript
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value
+      })
+    });
+    ```
+    **API Endpoint:** `https://general-cashouts.onrender.com/api/auth/login`
+  </Step>
+
+  <Step title="Token Storage">
+    On successful authentication, the JWT token and user data are stored locally:
+    ```javascript
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    ```
+  </Step>
+
+  <Step title="Dashboard Access">
+    The dashboard displays available applications based on user role (index.html:106-145)
+  </Step>
+</Steps>
+
+## User Roles
+
+OPS Workspace supports three distinct user roles:
+
+<Tabs>
+  <Tab title="Supervisor">
+    ### Supervisor Role
+    
+    **Badge Color:** Purple (`rgba(94, 106, 210, 0.15)`)
+    
+    **Permissions:**
+    - Full access to all applications
+    - Can manage team members
+    - Administrative privileges in Operapedia
+    - Access to cashout review queue
+    - View all statistics and leaderboards
+    
+    **UI Indicators:**
+    ```javascript
+    roleBadge.style.background = 'rgba(94, 106, 210, 0.15)';
+    roleBadge.style.color = '#6f7bf0';
+    roleBadge.style.border = '1px solid rgba(94, 106, 210, 0.3)';
+    ```
+    
+    **Special Features:**
+    - "Manage Team" button visible (index.html:54-56)
+    - Edit mode enabled in Operapedia (operapedia/index.html:222-229)
+  </Tab>
+
+  <Tab title="Analista">
+    ### Analista Role
+    
+    **Badge Color:** Green (`rgba(46, 204, 113, 0.15)`)
+    
+    **Permissions:**
+    - Access to both Cashouts and Operapedia
+    - Can submit cashout requests
+    - Can review cashouts
+    - Read-only access in Operapedia
+    - View personal statistics
+    
+    **UI Indicators:**
+    ```javascript
+    roleBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+    roleBadge.style.color = '#2ecc71';
+    roleBadge.style.border = '1px solid rgba(46, 204, 113, 0.3)';
+    ```
+  </Tab>
+
+  <Tab title="Chats">
+    ### Chats Role
+    
+    **Badge Color:** Orange (`rgba(243, 156, 18, 0.15)`)
+    
+    **Permissions:**
+    - Access to Operapedia ONLY
+    - Read-only access to company credentials
+    - Cannot access Cashouts system
+    
+    **UI Indicators:**
+    ```javascript
+    roleBadge.style.background = 'rgba(243, 156, 18, 0.15)';
+    roleBadge.style.color = '#f39c12';
+    roleBadge.style.border = '1px solid rgba(243, 156, 18, 0.3)';
+    ```
+    
+    **Restrictions:**
+    ```javascript
+    // Cashouts card hidden for Chats role
+    if (user.role === 'chats') {
+      cardCashouts.style.display = 'none';
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## JWT Token Management
+
+### Token Inclusion
+
+Every API request automatically includes the JWT token in the Authorization header:
+
+```javascript
+async function apiFetch(endpoint, options = {}) {
+  const headers = { 
+    'Content-Type': 'application/json', 
+    ...options.headers 
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  
+  const response = await fetch(`${API_BASE}${endpoint}`, { 
+    ...options, 
+    headers 
+  });
+  
+  // Auto-logout on unauthorized
+  if (response.status === 401 || response.status === 403) {
+    cerrarSesion();
+    throw new Error("Sesión expirada o acceso denegado");
+  }
+  return response;
+}
+```
+
+### Token Validation
+
+<Accordion title="Session Persistence">
+  On page load, the system checks for existing sessions:
+  
+  ```javascript
+  document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+      const user = JSON.parse(userStr);
+      mostrarDashboard(user);
+    }
+  });
+  ```
+</Accordion>
+
+<Accordion title="Automatic Expiration Handling">
+  When a token expires or becomes invalid:
+  
+  1. API returns 401 or 403 status
+  2. `apiFetch` wrapper catches the error
+  3. User is automatically logged out
+  4. Local storage is cleared
+  5. User is redirected to login page
+</Accordion>
+
+## Profile Menu
+
+Authenticated users have access to a profile dropdown showing their information:
+
+```javascript
+function mostrarDashboard(user) {
+  // Display first name in trigger
+  const primerNombre = user.fullName.split(' ')[0];
+  document.getElementById('triggerName').textContent = primerNombre;
+  
+  // Populate dropdown menu
+  document.getElementById('profileFullName').textContent = user.fullName;
+  document.getElementById('profileUsername').textContent = '@' + user.username;
+  document.getElementById('profileRole').textContent = user.role.toUpperCase();
+}
+```
+
+**Profile Menu Components** (index.html:108-127):
+- Full name display
+- Username with @ prefix
+- Role badge with color coding
+- Logout button
+
+## Security Features
+
+<CardGroup cols={2}>
+  <Card title="Read-Only Operator Name" icon="shield-check">
+    In the Cashouts system, the operator name field is auto-filled and locked:
+    ```javascript
+    const operatorNameInput = document.getElementById('operatorName');
+    if (operatorNameInput) {
+      operatorNameInput.value = currentUser.fullName;
+      operatorNameInput.readOnly = true; // Prevents impersonation
+    }
+    ```
+  </Card>
+
+  <Card title="Role-Based UI" icon="eye-slash">
+    UI elements dynamically hide based on user role:
+    ```javascript
+    if (currentUser.role === 'supervisor') {
+      manageTeamBtn.style.display = 'block';
+    } else {
+      manageTeamBtn.style.display = 'none';
+    }
+    ```
+  </Card>
+
+  <Card title="Token Auto-Refresh" icon="rotate">
+    Tokens are validated on every API call. Invalid tokens trigger automatic logout to prevent unauthorized access.
+  </Card>
+
+  <Card title="Secure Password Modal" icon="key">
+    Admin actions in Operapedia require password re-authentication:
+    ```javascript
+    const ADMIN_PASSWORD = 'superctrl2023';
+    const pwd = await showPasswordModal(
+      'Acceso de administrador',
+      'Introduce la contraseña para gestionar el catálogo.'
+    );
+    if (pwd !== ADMIN_PASSWORD) {
+      toast.textContent = '❌ Contraseña incorrecta';
+      return;
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Logout Process
+
+```javascript
+function logout() {
+  // Clear stored credentials
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  
+  // Reload to show login screen
+  location.reload();
+}
+```
+
+**Logout triggers:**
+- Manual logout button click
+- Token expiration (401/403 response)
+- Session timeout
+
+## Cross-Application Authentication
+
+All applications (Cashouts, Operapedia) verify authentication on load:
+
+### Operapedia Integration
+
+```javascript
+// operapedia/index.html:209-230
+document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+
+  if (!token || !userStr) {
+    window.location.href = '/'; // Redirect to Hub
+    return;
+  }
+
+  const user = JSON.parse(userStr);
+
+  // Auto-grant admin privileges to supervisors
+  if (user.role === 'supervisor') {
+    localStorage.setItem('credentialsAdminLoggedIn', 'true');
+  } else {
+    localStorage.removeItem('credentialsAdminLoggedIn');
+    // Hide edit buttons for non-supervisors
+    document.getElementById('editModeBtn').style.display = 'none';
+    document.getElementById('catalogBtn').style.display = 'none';
+  }
+});
+```
+
+### Cashouts Integration
+
+```javascript
+// cashouts/index.html:597-623
+function iniciarApp(jwtToken, userData) {
+  token = jwtToken;
+  currentUser = userData;
+  
+  showNotification(`¡Bienvenido, ${currentUser.fullName}!`, 'success');
+
+  // Auto-fill operator name (locked)
+  const operatorNameInput = document.getElementById('operatorName');
+  if (operatorNameInput) {
+    operatorNameInput.value = currentUser.fullName;
+    operatorNameInput.readOnly = true;
+  }
+
+  // Enable supervisor features
+  if (currentUser.role === 'supervisor') {
+    manageTeamBtn.style.display = 'block';
+  }
+}
+```
+
+## API Reference
+
+| Endpoint | Method | Purpose | Response |
+|----------|--------|---------|----------|
+| `/api/auth/login` | POST | Authenticate user | `{ token: string, user: UserObject }` |
+| `/api/cashouts` | POST | Submit cashout (requires token) | `{ success: boolean }` |
+| `/api/cashouts` | GET | Fetch cashouts (requires token) | `CashoutItem[]` |
+
+**Base URL:** `https://general-cashouts.onrender.com/api`
+
+<Note>
+  All authenticated endpoints automatically validate the JWT token via the `apiFetch` wrapper. Requests without valid tokens receive 401/403 responses.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never Store Passwords Locally">
+    Only tokens are stored, never raw passwords. Tokens can be revoked server-side.
+  </Accordion>
+
+  <Accordion title="Use Role-Based Access Control">
+    Check user roles before displaying sensitive UI elements or making privileged API calls.
+  </Accordion>
+
+  <Accordion title="Handle Token Expiration Gracefully">
+    Always implement automatic logout on 401/403 responses to prevent confused user states.
+  </Accordion>
+
+  <Accordion title="Validate on Every Page Load">
+    Check for valid token and user data on application initialization to prevent unauthorized access.
+  </Accordion>
+</AccordionGroup>

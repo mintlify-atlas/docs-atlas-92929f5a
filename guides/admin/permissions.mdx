@@ -1,0 +1,364 @@
+---
+title: Permissions & Access Control
+description: Understanding role-based permissions and UI restrictions in OPS Workspace
+---
+
+## Overview
+
+OPS Workspace uses a **role-based access control (RBAC)** system to manage permissions. Each user is assigned a role that determines which applications they can access and which features are available to them.
+
+## Role Hierarchy
+
+There are three roles in the system, each with different permission levels:
+
+<CardGroup cols={3}>
+  <Card title="Supervisor" icon="crown" color="#6f7bf0">
+    **Highest privileges**
+    
+    Full access to all features including user management
+  </Card>
+  
+  <Card title="Analista" icon="user-check" color="#2ecc71">
+    **Standard access**
+    
+    Access to cashout operations and Operapedia
+  </Card>
+  
+  <Card title="Chats" icon="comments" color="#f39c12">
+    **Limited access**
+    
+    Access only to Operapedia for customer support
+  </Card>
+</CardGroup>
+
+## Permission Matrix
+
+### Application Access
+
+| Application | Supervisor | Analista | Chats |
+|-------------|:----------:|:--------:|:-----:|
+| **Cashouts** | ✅ | ✅ | ❌ |
+| **Operapedia** | ✅ | ✅ | ✅ |
+
+### Cashouts Features
+
+| Feature | Supervisor | Analista | Chats |
+|---------|:----------:|:--------:|:-----:|
+| Submit cashouts | ✅ | ✅ | ❌ |
+| Review cashouts | ✅ | ✅ | ❌ |
+| View cashout rules | ✅ | ✅ | ❌ |
+| Edit cashout rules | ✅ | ❌ | ❌ |
+| Create companies | ✅ | ❌ | ❌ |
+| View leaderboard | ✅ | ✅ | ❌ |
+| View statistics | ✅ | ✅ | ❌ |
+| **Manage team** | ✅ | ❌ | ❌ |
+| Create users | ✅ | ❌ | ❌ |
+| Delete users | ✅ | ❌ | ❌ |
+| Change passwords | ✅ | ❌ | ❌ |
+
+<Note>
+The "Manage Team" button is automatically hidden from analysts and chat agents based on their role.
+</Note>
+
+## How Permissions Work
+
+### Authentication Flow
+
+<Steps>
+  <Step title="User Login">
+    User enters username and password at the OPS Workspace hub
+  </Step>
+  
+  <Step title="Token Generation">
+    Server validates credentials and generates a JWT token containing user data:
+    ```json
+    {
+      "fullName": "Juan Perez",
+      "username": "juan.perez",
+      "role": "analista"
+    }
+    ```
+  </Step>
+  
+  <Step title="Role Storage">
+    Token and user data are stored in localStorage:
+    ```javascript
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    ```
+  </Step>
+  
+  <Step title="UI Rendering">
+    Application reads the role and shows/hides features accordingly
+  </Step>
+</Steps>
+
+### Role-Based UI Restrictions
+
+The system enforces permissions at the **UI level** by conditionally rendering elements based on the user's role:
+
+```javascript
+// Initialize app with user role
+function iniciarApp(jwtToken, userData) {
+  token = jwtToken;
+  currentUser = userData;
+  
+  // Show Manage Team button only for supervisors
+  if (currentUser.role === 'supervisor') {
+    manageTeamBtn.style.display = 'block';
+  } else {
+    manageTeamBtn.style.display = 'none';
+  }
+}
+```
+
+### Application Visibility
+
+At the hub level, applications are hidden based on role:
+
+```javascript
+// Hide Cashouts app for chat agents
+if (user.role === 'chats') {
+  document.getElementById('card-cashouts').style.display = 'none';
+}
+```
+
+<Warning>
+Chat agents (`chats` role) cannot see or access the Cashouts application at all. It is completely hidden from the dashboard.
+</Warning>
+
+## Role Indicators
+
+### Visual Badge System
+
+Each role has a distinct color scheme for easy identification:
+
+#### Supervisor Badge
+```css
+background: rgba(94, 106, 210, 0.15);
+color: #6f7bf0;
+border: 1px solid rgba(94, 106, 210, 0.3);
+```
+<div style={{background: 'rgba(94, 106, 210, 0.15)', color: '#6f7bf0', border: '1px solid rgba(94, 106, 210, 0.3)', padding: '4px 10px', borderRadius: '12px', display: 'inline-block', fontSize: '11px', fontWeight: '700'}}>SUPERVISOR</div>
+
+#### Analista Badge
+```css
+background: rgba(46, 204, 113, 0.15);
+color: #2ecc71;
+border: 1px solid rgba(46, 204, 113, 0.3);
+```
+<div style={{background: 'rgba(46, 204, 113, 0.15)', color: '#2ecc71', border: '1px solid rgba(46, 204, 113, 0.3)', padding: '4px 10px', borderRadius: '12px', display: 'inline-block', fontSize: '11px', fontWeight: '700'}}>ANALISTA</div>
+
+#### Chats Badge
+```css
+background: rgba(243, 156, 18, 0.15);
+color: #f39c12;
+border: 1px solid rgba(243, 156, 18, 0.3);
+```
+<div style={{background: 'rgba(243, 156, 18, 0.15)', color: '#f39c12', border: '1px solid rgba(243, 156, 18, 0.3)', padding: '4px 10px', borderRadius: '12px', display: 'inline-block', fontSize: '11px', fontWeight: '700'}}>CHATS</div>
+
+## Server-Side Authorization
+
+### JWT Token Validation
+
+All API requests include the JWT token in the Authorization header:
+
+```javascript
+async function apiFetch(endpoint, options = {}) {
+  const headers = { 
+    'Content-Type': 'application/json', 
+    ...options.headers 
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(`${API_BASE}${endpoint}`, { 
+    ...options, 
+    headers 
+  });
+  
+  // Automatic session termination on auth failure
+  if (response.status === 401 || response.status === 403) {
+    cerrarSesion();
+    throw new Error("Sesión expirada o acceso denegado");
+  }
+  
+  return response;
+}
+```
+
+### Protected Endpoints
+
+Certain endpoints require specific roles:
+
+| Endpoint | Required Role | Purpose |
+|----------|---------------|----------|
+| `POST /api/users` | `supervisor` | Create new user |
+| `DELETE /api/users/:id` | `supervisor` | Delete user |
+| `PUT /api/users/:id/password` | `supervisor` | Change user password |
+| `PUT /api/rules/:id` | `supervisor` | Edit cashout rules |
+| `POST /api/rules` | `supervisor` | Create new company |
+
+<Warning>
+If a user attempts to access a protected endpoint without proper permissions, they receive a **401 Unauthorized** or **403 Forbidden** response and are immediately logged out.
+</Warning>
+
+## Auto-Authentication Features
+
+### Operator Name Lock
+
+When submitting cashouts, the operator name field is automatically populated and locked to prevent impersonation:
+
+```javascript
+// Auto-populate operator name from logged-in user
+const operatorNameInput = document.getElementById('operatorName');
+if (operatorNameInput) {
+  operatorNameInput.value = currentUser.fullName;
+  operatorNameInput.readOnly = true; // Prevent manual changes
+}
+```
+
+### Supervisor Attribution
+
+When reviewing cashouts, the supervisor's name is automatically attached:
+
+```javascript
+await apiFetch(`/cashouts/${encodeURIComponent(revisionPendiente.row)}`, {
+  method: "PATCH",
+  body: JSON.stringify({
+    status: revisionPendiente.estado,
+    supervisorName: currentUser.fullName, // Auto-filled from token
+    observacion: observacionFinal
+  })
+});
+```
+
+<Tip>
+Users cannot impersonate other users because names are pulled directly from the authenticated JWT token, not from user input.
+</Tip>
+
+## Session Management
+
+### Automatic Logout Scenarios
+
+1. **Token Expiration**: JWT tokens expire after a set period
+2. **Invalid Token**: Tampered or corrupted tokens trigger logout
+3. **Permission Denied**: Accessing restricted resources logs out the user
+4. **Manual Logout**: User clicks "Cerrar Sesión" button
+
+### Logout Process
+
+```javascript
+function cerrarSesion() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/'; // Redirect to hub
+}
+```
+
+<Note>
+All logout scenarios redirect users back to the login screen at the OPS Workspace hub.
+</Note>
+
+## Permission Code Examples
+
+### Role-Based Feature Toggle
+
+```javascript
+// Example: Show/hide company creation form
+const isSupervisor = currentUser.role === 'supervisor';
+if (newCompanyContainer) {
+  newCompanyContainer.style.display = isSupervisor ? 'block' : 'none';
+}
+```
+
+### Role-Based Button Rendering
+
+```javascript
+// Example: Edit button only for supervisors
+${isSupervisor ? 
+  `<button onclick="toggleEditRegla('${rule._id}')">✏️ Editar</button>` 
+  : 
+  ''
+}
+```
+
+### Admin Protection
+
+```javascript
+// Example: Disable delete for admin user
+<button 
+  onclick="eliminarUsuario('${u._id}')" 
+  ${u.username === 'admin' ? 'disabled' : ''}
+>
+  🗑️ Borrar
+</button>
+```
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never trust client-side permissions">
+    Always validate permissions on the server. Client-side restrictions are for UX only and can be bypassed by malicious users.
+  </Accordion>
+  
+  <Accordion title="Use JWT tokens properly">
+    - Never expose the JWT secret
+    - Set appropriate expiration times
+    - Validate tokens on every request
+    - Include user role in the token payload
+  </Accordion>
+  
+  <Accordion title="Implement automatic session termination">
+    Log out users immediately when:
+    - Token expires
+    - Token is invalid
+    - User accesses restricted resources
+    - Multiple failed authorization attempts
+  </Accordion>
+  
+  <Accordion title="Prevent role escalation">
+    - Users cannot change their own role
+    - Only supervisors can assign roles
+    - Admin user cannot be deleted or demoted
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting Permissions
+
+<AccordionGroup>
+  <Accordion title="User sees features they shouldn't have access to">
+    - Check the user's role in the database
+    - Verify the JWT token contains the correct role
+    - Clear localStorage and re-login
+    - Check for role assignment errors during user creation
+  </Accordion>
+  
+  <Accordion title="User gets 401/403 errors">
+    - Verify the user has a valid token in localStorage
+    - Check if the token has expired
+    - Confirm the user's role has permission for the endpoint
+    - Check server logs for authorization failures
+  </Accordion>
+  
+  <Accordion title="Manage Team button not showing for supervisor">
+    - Verify `currentUser.role === 'supervisor'` in console
+    - Check if `iniciarApp()` function ran successfully
+    - Inspect `manageTeamBtn.style.display` in DevTools
+    - Confirm user was created with supervisor role (not Supervisor or SUPERVISOR)
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Team Management" icon="users" href="/guides/admin/team-management">
+    Learn how to create and manage user accounts
+  </Card>
+  
+  <Card title="Authentication" icon="key" href="/features/authentication">
+    Understand the login and token system
+  </Card>
+</CardGroup>

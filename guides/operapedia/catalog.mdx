@@ -1,0 +1,328 @@
+---
+title: "Game Catalog Management"
+description: "Manage the master game catalog with centralized game names and official links"
+---
+
+## Overview
+
+The **Game Catalog** is a centralized master list of games available across all companies. It provides:
+
+- Consistent game names across companies
+- Official game platform links
+- Auto-fill functionality when adding games to companies
+- Dropdown options in the game credential editor
+
+<Note>
+  The catalog is **independent** from company game assignments. Modifying the catalog does NOT affect existing games already added to companies.
+</Note>
+
+## Accessing the Catalog
+
+The catalog is accessed via the **📋 Catálogo** button in the navbar.
+
+<Steps>
+  <Step title="Click Catalog Button">
+    Located in the top navbar next to the theme toggle and Edit button.
+  </Step>
+  
+  <Step title="Authenticate">
+    A password modal appears asking for the admin password (`superctrl2023`).
+    
+    ```javascript operapedia/app.js
+    const password = await showPasswordModal(
+      'Gestión de Catálogo',
+      'Ingresa la contraseña de administrador:'
+    );
+    
+    if (password !== ADMIN_PASSWORD) {
+      showToast('Contraseña incorrecta');
+      return;
+    }
+    ```
+  </Step>
+  
+  <Step title="Catalog Modal Opens">
+    The modal displays the full catalog with editable fields:
+    - Order number (for sorting)
+    - Game name
+    - Official link URL
+  </Step>
+</Steps>
+
+## Catalog Data Structure
+
+Games are stored in Firebase at `gameCatalog/`:
+
+```json
+gameCatalog/
+  0/
+    id: 1
+    name: "Aviator"
+    link: "https://game-platform.com/aviator"
+  1/
+    id: 2
+    name: "JetX"
+    link: "https://game-platform.com/jetx"
+  ...
+```
+
+Each game has:
+- **id**: Unique numeric identifier
+- **name**: Display name of the game
+- **link**: Official game platform URL
+
+## Managing the Catalog
+
+### Adding New Games
+
+<Steps>
+  <Step title="Click Add Game Button">
+    Click **+ Agregar juego al catálogo** at the bottom of the catalog modal.
+  </Step>
+  
+  <Step title="Fill in Game Details">
+    A new empty row appears with three fields:
+    
+    - **Order #**: Auto-incremented (editable)
+    - **Name**: Enter the official game name
+    - **Link**: Enter the complete game platform URL
+  </Step>
+  
+  <Step title="Save Catalog">
+    Click **Guardar catálogo** to persist all changes to Firebase.
+  </Step>
+</Steps>
+
+### Editing Existing Games
+
+All fields in the catalog are editable:
+
+- **Name**: Click to edit the game name
+- **Link**: Click to edit the URL
+- **Order**: Change the sort order
+
+Changes are highlighted until saved.
+
+### Deleting Games
+
+<Steps>
+  <Step title="Click Delete Icon">
+    Each game row has a **✕** delete button on the right.
+  </Step>
+  
+  <Step title="Confirm Deletion">
+    A confirmation modal appears showing the game name:
+    
+    ```javascript operapedia/app.js
+    const confirmed = await showConfirmModal(
+      'Eliminar juego',
+      `¿Estás seguro de eliminar "${gameName}" del catálogo?`,
+      'Eliminar',
+      'Cancelar'
+    );
+    ```
+  </Step>
+  
+  <Step title="Save Catalog">
+    After confirming, click **Guardar catálogo** to persist the deletion.
+  </Step>
+</Steps>
+
+<Warning>
+  Deleting a game from the catalog does NOT remove it from companies that already use it. It only removes it from the dropdown when adding new games.
+</Warning>
+
+## Catalog Usage in Companies
+
+When adding a game to a company's credentials:
+
+### Dropdown Auto-Population
+
+1. In edit mode on the Credenciales tab, click the add game card
+2. A dropdown selector shows all catalog games
+3. Select a game from the list
+4. The **link field auto-fills** with the catalog's official URL
+5. Enter the username manually
+6. Save the game to the company
+
+### Custom Games (Not in Catalog)
+
+If a game isn't in the catalog:
+
+1. Select **"✏️ Otro"** from the dropdown
+2. Manually enter:
+   - Game name
+   - Username
+   - Link
+3. Save to company
+
+<Tip>
+  Add frequently used games to the catalog to save time and ensure consistent URLs across companies.
+</Tip>
+
+## Bulk Loading: Seed Catalog
+
+For initial setup, Operapedia includes a bulk seed utility.
+
+### seed-catalog.html
+
+This standalone HTML file (`~/workspace/source/operapedia/seed-catalog.html`) can load the entire catalog in one operation:
+
+<Steps>
+  <Step title="Open Seed Page">
+    Navigate to `/operapedia/seed-catalog.html` in your browser.
+  </Step>
+  
+  <Step title="Review Game List">
+    The page contains a hardcoded array of 74 games with names and links.
+  </Step>
+  
+  <Step title="Click Upload Button">
+    Click **Subir catálogo** to push all games to Firebase at once.
+  </Step>
+  
+  <Step title="Verify Upload">
+    Check the catalog modal in Operapedia to confirm all games were loaded.
+  </Step>
+</Steps>
+
+<Note>
+  The seed utility is typically used **once** during initial setup. After that, use the catalog modal for individual additions/edits.
+</Note>
+
+## Firebase Integration
+
+The catalog uses Firebase Realtime Database with the modular SDK:
+
+### Loading Catalog
+
+```javascript operapedia/app.js
+if (window.gameCatalogRef && window.firebaseOnValue) {
+  window.firebaseOnValue(window.gameCatalogRef, (snapshot) => {
+    if (snapshot.exists()) {
+      gameCatalog = [];
+      snapshot.forEach(child => {
+        gameCatalog.push(child.val());
+      });
+      gameCatalog.sort((a, b) => a.id - b.id);
+    }
+  });
+}
+```
+
+### Saving Catalog
+
+```javascript operapedia/app.js
+await window.firebaseSet(
+  window.firebaseRef(window.db, 'gameCatalog'),
+  gameCatalog
+);
+```
+
+The catalog is loaded once on page load and cached in memory. Changes are saved back to Firebase when **Guardar catálogo** is clicked.
+
+## Catalog vs Company Games
+
+| Aspect | Game Catalog | Company Games |
+|--------|--------------|---------------|
+| **Location** | `gameCatalog/` | `companies/{id}/games/` |
+| **Purpose** | Master reference list | Actual credentials per company |
+| **Fields** | id, name, link | id, name, username, link, active, lastModified |
+| **Independence** | Changes don't affect companies | Independent per company |
+| **Usage** | Dropdown source | Credentials storage |
+
+### Why Separation Matters
+
+1. **Link Updates**: If a game platform changes domains, updating the catalog doesn't break existing company games
+2. **Custom Games**: Companies can have games not in the catalog (using "Otro" option)
+3. **Flexibility**: Different companies may have different URLs for the same game (regional variants)
+
+## Search and Filtering
+
+The catalog modal doesn't have built-in search, but you can:
+
+1. Use browser search (Ctrl+F / Cmd+F) within the modal
+2. Sort by name or ID using the order column
+3. Scroll through the full list (typically 74+ games)
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Game Naming">
+    - Use official game names (check the game platform)
+    - Maintain consistent capitalization (e.g., "JetX" not "Jetx")
+    - Avoid regional suffixes unless truly different games
+    - Use English names for international games
+  </Accordion>
+  
+  <Accordion title="Link Accuracy">
+    - Always use complete URLs with `https://`
+    - Test links before adding to catalog
+    - Use the official platform URL (not third-party aggregators)
+    - Update links if platforms migrate domains
+  </Accordion>
+  
+  <Accordion title="Catalog Maintenance">
+    - Periodically review and remove defunct games
+    - Add new popular games as they launch
+    - Fix typos immediately to prevent propagation
+    - Document platform changes in company Notes tabs
+  </Accordion>
+  
+  <Accordion title="Order Management">
+    - Keep popular games at the top (lower IDs)
+    - Group similar games together
+    - Maintain alphabetical order within categories
+    - Re-number after major additions/deletions
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Catalog Button Not Visible">
+    The catalog button (📋) only appears if:
+    - You are logged in as a supervisor
+    - The button is enabled in the UI (not hidden by role logic)
+    
+    Analista and Chats roles may not see this button.
+  </Accordion>
+  
+  <Accordion title="Cannot Save Catalog Changes">
+    If **Guardar catálogo** fails:
+    - Check Firebase connection in browser console
+    - Verify Firebase rules allow write to `gameCatalog/`
+    - Ensure all game objects have `id`, `name`, and `link` fields
+    - Check for duplicate IDs in the catalog
+  </Accordion>
+  
+  <Accordion title="Games Not Appearing in Dropdown">
+    If catalog games don't show when adding to a company:
+    - Verify the catalog loaded successfully (check browser console)
+    - Refresh the Operapedia page to reload catalog
+    - Check that `gameCatalog` array is populated in memory
+    - Verify Firebase listener is attached to `gameCatalogRef`
+  </Accordion>
+  
+  <Accordion title="Link Auto-Fill Not Working">
+    If selecting a catalog game doesn't fill the link:
+    - Ensure the catalog entry has a valid `link` field
+    - Check that the link field isn't read-only or disabled
+    - Verify JavaScript isn't throwing errors (check console)
+    - Try refreshing and re-entering edit mode
+  </Accordion>
+</AccordionGroup>
+
+## Migration from Data.js
+
+Original Operapedia versions used a hardcoded `data.js` file. The catalog system replaced this with:
+
+- **Before**: Games hardcoded in `operapedia/data.js`
+- **After**: Games stored in Firebase at `gameCatalog/`
+- **Migration**: Use `migration.html` tool to import data.js to Firebase
+
+The Firebase-based catalog allows:
+- ✅ Real-time updates without code deployments
+- ✅ Multi-user editing without merge conflicts
+- ✅ No need to redeploy when adding games
+- ✅ Centralized source of truth

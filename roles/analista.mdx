@@ -1,0 +1,162 @@
+---
+title: 'Analista Role'
+description: 'Standard user role for cashout submission and full app access'
+---
+
+## Overview
+
+The **Analista** (Analyst) role is the standard operational role in OPS Workspace. Users with this role can submit cashouts and access both applications, but do not have team management or review capabilities.
+
+## Badge Appearance
+
+Analistas are identified by a green badge in the profile dropdown:
+
+**Badge Style:**
+- Background: `rgba(46, 204, 113, 0.15)` (light green)
+- Text Color: `#2ecc71` (bright green)
+- Border: `1px solid rgba(46, 204, 113, 0.3)`
+- Label: **ANALISTA** (uppercase)
+
+## Permissions
+
+### Full Application Access
+
+Analistas can access both workspace applications:
+
+| Application | Access Level |
+|-------------|-------------|
+| **Cashouts** | ✅ Full Access |
+| **Operapedia** | ✅ Full Access |
+
+### Cashouts App Capabilities
+
+- **Submit cashouts** - Create and register new cashout records
+- **View records** - Access cashout history and status
+- **Real-time sync** - Automatic synchronization to Google Sheets
+- **Track submissions** - Monitor status of own cashout entries
+
+<Note>
+Analistas can submit cashouts but cannot review or approve submissions. Review functionality is restricted to Supervisors only.
+</Note>
+
+### Operapedia App Capabilities
+
+- **View credentials** - Access login credentials for company platforms
+- **View payment methods** - See available payment processors and methods
+- **View promotions** - Access current promotional offers and campaigns
+- **Browse game catalog** - View complete game library
+
+## Responsibilities
+
+### Primary Duties
+
+Analistas are responsible for:
+
+1. **Accurate data entry** - Ensure all cashout information is correct
+2. **Timely submission** - Process cashouts promptly
+3. **Quality assurance** - Double-check entries before submission
+4. **Information lookup** - Use Operapedia for reference data
+
+### Data Quality
+
+<Note>
+Accuracy is critical. Always verify cashout details before submitting. Errors may require supervisor intervention to correct.
+</Note>
+
+Key practices:
+
+- Verify all required fields are complete
+- Double-check amounts and account details
+- Use Operapedia to confirm payment method details
+- Follow company cashout procedures
+
+## UI Differences
+
+### Dashboard View
+
+Analistas see the full workspace dashboard with both application cards visible:
+
+```html
+<!-- Both cards are displayed -->
+<a href="/cashouts/" class="app-card" id="card-cashouts" style="display: flex;">
+  <div class="app-icon">🌴</div>
+  <h3 class="app-title">Cashouts</h3>
+  <p class="app-desc">Sistema de registro y verificación de cashouts...</p>
+</a>
+
+<a href="/operapedia/" class="app-card" id="card-operapedia" style="display: flex;">
+  <div class="app-icon">📓</div>
+  <h3 class="app-title">Operapedia</h3>
+  <p class="app-desc">Panel de credenciales, métodos de pago...</p>
+</a>
+```
+
+### Profile Dropdown
+
+The analista badge is applied in the profile dropdown (lines 244-247 in source):
+
+```javascript
+if (user.role === 'analista') {
+    roleBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+    roleBadge.style.color = '#2ecc71';
+    roleBadge.style.border = '1px solid rgba(46, 204, 113, 0.3)';
+}
+```
+
+## Workflow Example
+
+### Typical Cashout Submission Process
+
+1. **Receive cashout request** from customer or system
+2. **Open Cashouts app** from workspace dashboard
+3. **Verify payment details** using Operapedia if needed
+4. **Enter cashout information** into the form:
+   - Customer details
+   - Amount
+   - Payment method
+   - Account information
+5. **Double-check all fields** for accuracy
+6. **Submit the cashout** - automatically syncs to Google Sheets
+7. **Confirm submission** - verify entry appears in records
+
+## Differences from Other Roles
+
+### vs. Supervisor
+
+Analistas have the same app access as Supervisors but cannot:
+- Review or approve cashouts from other users
+- Manage team members
+- Access supervisor-only administrative functions
+
+### vs. Chats
+
+Analistas have significantly more access than Chats role:
+- **Can access Cashouts app** (hidden for Chats)
+- **Can submit cashouts** (not available to Chats)
+- Same Operapedia access as Chats
+
+## Best Practices
+
+### Accuracy First
+
+- Always double-check entries before submission
+- Use Operapedia to verify credentials and payment methods
+- Ask supervisor if uncertain about any detail
+
+### Efficiency Tips
+
+- Keep Operapedia open in another tab for quick reference
+- Familiarize yourself with common payment methods
+- Learn keyboard shortcuts to speed up data entry
+
+### Security
+
+- Log out when stepping away from your workstation
+- Never share your login credentials
+- Report any suspicious activity to your supervisor
+
+## Related Documentation
+
+- [User Roles Overview](/roles/overview) - Complete role comparison
+- [Supervisor Role](/roles/supervisor) - Understanding supervisor permissions
+- [Chats Role](/roles/chats) - Restricted access role

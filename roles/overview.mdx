@@ -1,0 +1,92 @@
+---
+title: 'User Roles Overview'
+description: 'Understanding user roles and permissions in OPS Workspace'
+---
+
+## Role-Based Access Control
+
+OPS Workspace implements a role-based access control (RBAC) system with three distinct user roles. Each role has specific permissions and access levels designed to match job responsibilities and security requirements.
+
+## Available Roles
+
+OPS Workspace supports three user roles:
+
+| Role | Badge Color | Primary Function | Access Level |
+|------|-------------|------------------|-------------|
+| **Supervisor** | Purple/Blue | Full system access, team management, cashout review | Full |
+| **Analista** | Green | Submit cashouts, access both applications | Standard |
+| **Chats** | Orange/Gold | Knowledge base access only | Restricted |
+
+## Permission Matrix
+
+The following table shows the specific permissions for each role:
+
+| Feature | Supervisor | Analista | Chats |
+|---------|-----------|----------|-------|
+| **Cashouts App Access** | ✅ Full | ✅ Full | ❌ Hidden |
+| **Operapedia Access** | ✅ Full | ✅ Full | ✅ Full |
+| **Submit Cashouts** | ✅ | ✅ | ❌ |
+| **Review Cashouts** | ✅ | ❌ | ❌ |
+| **Team Management** | ✅ | ❌ | ❌ |
+| **View All Records** | ✅ | ✅ | ❌ |
+| **Access Credentials** | ✅ | ✅ | ✅ |
+| **View Payment Methods** | ✅ | ✅ | ✅ |
+| **View Promotions** | ✅ | ✅ | ✅ |
+
+## Role Badge Styling
+
+Each role has a distinct badge color displayed in the user profile dropdown:
+
+### Supervisor Badge
+```css
+background: rgba(94, 106, 210, 0.15);
+color: #6f7bf0;
+border: 1px solid rgba(94, 106, 210, 0.3);
+```
+
+### Analista Badge
+```css
+background: rgba(46, 204, 113, 0.15);
+color: #2ecc71;
+border: 1px solid rgba(46, 204, 113, 0.3);
+```
+
+### Chats Badge
+```css
+background: rgba(243, 156, 18, 0.15);
+color: #f39c12;
+border: 1px solid rgba(243, 156, 18, 0.3);
+```
+
+## UI Differences by Role
+
+### Dashboard View
+
+The workspace dashboard dynamically adjusts based on user role:
+
+- **Supervisor & Analista**: See both Cashouts and Operapedia app cards
+- **Chats**: Only sees Operapedia app card (Cashouts is hidden via `display: none`)
+
+<Note>
+Role-based UI rendering happens client-side after authentication. The logic checks `user.role` and conditionally displays elements (lines 240-256 in index.html).
+</Note>
+
+## Role Assignment
+
+User roles are assigned during account creation and stored in the backend database. The role is returned in the authentication response and stored in localStorage:
+
+```javascript
+localStorage.setItem('user', JSON.stringify(data.user));
+```
+
+## Security Considerations
+
+<Note>
+While the UI hides elements based on role, always implement server-side authorization checks. Client-side role checking is for UX only—backend APIs must validate permissions for all operations.
+</Note>
+
+## Next Steps
+
+- Learn about [Supervisor role](/roles/supervisor) capabilities
+- Understand [Analista role](/roles/analista) permissions  
+- Review [Chats role](/roles/chats) restrictions

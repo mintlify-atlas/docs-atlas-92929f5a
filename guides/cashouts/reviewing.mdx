@@ -1,0 +1,271 @@
+---
+title: Reviewing Cashouts
+description: Review queue management, approve/reject workflow, and supervisor observations
+---
+
+This guide explains how to review pending cashouts in the verification queue.
+
+## Review Queue Overview
+
+The review section displays all cashouts with `status: pending` in real-time.
+
+### Accessing the Queue
+
+Click the **"Review a Cashout"** button in the sidebar to enter review mode:
+
+```javascript
+reviewBtn.addEventListener('click', () => {
+  desactivarBotones();
+  reviewBtn.classList.add('active');
+  reviewSection.style.display = 'block';
+  cargarCola();
+  iniciarAutoRefresh();
+});
+```
+
+## Queue Features
+
+<Steps>
+  <Step title="Automatic Refresh">
+    The queue auto-refreshes every 10 seconds while active:
+
+    ```javascript
+    autoRefreshInterval = setInterval(() => {
+      if (reviewSection.style.display === 'block') cargarCola();
+    }, 10000);
+    ```
+  </Step>
+
+  <Step title="Manual Refresh">
+    Click the **"🔄 Actualizar Cola"** button to force an immediate refresh:
+
+    ```javascript
+    document.getElementById('forceRefresh').addEventListener('click', cargarCola);
+    ```
+  </Step>
+
+  <Step title="Load Pending Cashouts">
+    Fetches up to 300 pending cashouts from the API:
+
+    ```javascript
+    const resp = await apiFetch(`/cashouts?status=pending&limit=300`);
+    let items = await resp.json();
+    ```
+
+    **API Endpoint**: `GET /api/cashouts?status=pending&limit=300`
+  </Step>
+</Steps>
+
+## Cashout Card Display
+
+Each pending cashout shows:
+
+- **Operation Code**: Bold identifier
+- **Company**: Selected company name
+- **Operator Name**: Who submitted it
+- **Start Time**: `cashoutChecking` timestamp
+- **Live Timer**: ⏱️ Shows elapsed time (updates with each refresh)
+- **Observation Badge**: 📝 Yellow badge if operator added observations
+- **Action Buttons**: Approve (✓) and Reject (✗)
+
+```javascript
+div.innerHTML = `
+  <div><strong>${item.operationCode}</strong> <span>${item.company}</span></div>
+  <div>Operador: ${item.operatorName}</div>
+  <div>Inicio: ${item.cashoutChecking || 'Sin fecha'}</div>
+  ${tiempoHtml}
+  ${obsHtml}
+  <div style="display: flex; gap: 10px; margin-top: 12px;">
+    <button onclick="iniciarRevision('${item.row}', 'paid')" class="btn-action btn-verify">
+      <svg>...</svg> <span>Aprobar</span>
+    </button>
+    <button onclick="iniciarRevision('${item.row}', 'rejected')" class="btn-action btn-reject">
+      <svg>...</svg> <span>Rechazar</span>
+    </button>
+  </div>
+`;
+```
+
+## Approval/Rejection Workflow
+
+<Steps>
+  <Step title="Initiate Review">
+    Click **Aprobar** or **Rechazar** to start the review process:
+
+    ```javascript
+    window.iniciarRevision = function (row, nuevoEstado) {
+      if (procesandoRevision) return;
+      
+      const item = cachedItems.find(i => i.row === row);
+      revisionPendiente = {
+        row: row,
+        estado: nuevoEstado, // 'paid' or 'rejected'
+        observacionOriginal: item ? item.observacion : ""
+      };
+      
+      document.getElementById('supervisorObservacionModal').style.display = 'flex';
+    };
+    ```
+  </Step>
+
+  <Step title="Supervisor Observation Modal">
+    The modal shows the operator's original observation and asks if you want to add more:
+
+    - **Original observation** displayed in yellow box
+    - Click **SÍ** to add additional comments
+    - Click **NO** to proceed without adding comments
+
+    ```javascript
+    const display = document.getElementById('observacionOriginalDisplay');
+    if (revisionPendiente.observacionOriginal) {
+      display.innerHTML = `<strong>Observación Operador:</strong><br>${revisionPendiente.observacionOriginal}`;
+    } else {
+      display.innerHTML = `<em>Sin observación previa</em>`;
+    }
+    ```
+  </Step>
+
+  <Step title="Execute Review">
+    The system combines observations and sends the update:
+
+    ```javascript
+    async function ejecutarRevision(obsAdicional) {
+      let observacionFinal = revisionPendiente.observacionOriginal;
+      if (obsAdicional) {
+        const prefijo = currentUser.role === 'supervisor' ? 'Supervisor' : 'Analista';
+        observacionFinal = observacionFinal 
+          ? `${observacionFinal} | ${prefijo}: ${obsAdicional}` 
+          : `${prefijo}: ${obsAdicional}`;
+      }
+
+      await apiFetch(`/cashouts/${encodeURIComponent(revisionPendiente.row)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: revisionPendiente.estado,
+          supervisorName: currentUser.fullName,
+          observacion: observacionFinal
+        })
+      });
+    }
+    ```
+
+    **API Endpoint**: `PATCH /api/cashouts/{id}`
+  </Step>
+
+  <Step title="Immediate UI Update">
+    The cashout is removed from the queue immediately:
+
+    ```javascript
+    cachedItems = cachedItems.filter(item => item.row !== revisionPendiente.row);
+    renderizarCola(cachedItems);
+    showNotification(revisionPendiente.estado === 'paid' ? "¡Aprobado!" : "Rechazado", "success");
+    ```
+  </Step>
+</Steps>
+
+## Observation Combining Logic
+
+When a supervisor adds observations, they are appended with a role prefix:
+
+```javascript
+if (obsAdicional) {
+  const prefijo = currentUser.role === 'supervisor' ? 'Supervisor' : 'Analista';
+  observacionFinal = observacionOriginal 
+    ? `${observacionOriginal} | ${prefijo}: ${obsAdicional}` 
+    : `${prefijo}: ${obsAdicional}`;
+}
+```
+
+**Example Output**:
+- Original: `"Cliente pidió efectivo"`
+- Additional: `"Verificado con contabilidad"`
+- Final: `"Cliente pidió efectivo | Supervisor: Verificado con contabilidad"`
+
+## Live Timer Calculation
+
+The elapsed time is calculated from the `cashoutChecking` timestamp:
+
+```javascript
+function calcularTiempoTranscurrido(cashoutChecking) {
+  const [fecha, hora] = cashoutChecking.split(' ');
+  const [mes, dia, año] = fecha.split('/');
+  const [horas, mins, segs] = hora.split(':');
+  const inicio = new Date(año, mes - 1, dia, horas, mins, segs);
+  const diffSeg = Math.floor((new Date() - inicio) / 1000);
+  
+  const h = Math.floor(diffSeg / 3600);
+  const m = Math.floor((diffSeg % 3600) / 60);
+  const s = diffSeg % 60;
+  
+  const partes = [];
+  if (h > 0) partes.push(`${h}h`);
+  if (m > 0) partes.push(`${m}m`);
+  if (s > 0 || partes.length === 0) partes.push(`${s}s`);
+  return partes.join(' ');
+}
+```
+
+## Role-Based Access
+
+Both **supervisors** and **analysts** can review cashouts. The system automatically uses the logged-in user's:
+
+- `currentUser.fullName` for the `supervisorName` field
+- `currentUser.role` for the observation prefix
+
+## Error Handling
+
+<Accordion title="Network Errors">
+  If the API call fails:
+  ```javascript
+  catch (err) {
+    showNotification("Error procesando. Recargando...", "error");
+    await cargarCola();
+  }
+  ```
+  The queue is reloaded to ensure UI consistency.
+</Accordion>
+
+<Accordion title="Concurrent Review Prevention">
+  The `procesandoRevision` flag prevents multiple simultaneous reviews:
+  ```javascript
+  if (procesandoRevision) return;
+  procesandoRevision = true;
+  ```
+</Accordion>
+
+## API Reference
+
+### GET /api/cashouts
+
+**Query Parameters**:
+- `status`: Filter by status (e.g., `pending`)
+- `limit`: Maximum number of results (default: 300)
+
+**Response**:
+```json
+[
+  {
+    "_id": "...",
+    "operationCode": "OP-12345",
+    "operatorName": "Juan Perez",
+    "company": "Company A",
+    "observacion": "Cliente pidió efectivo",
+    "cashoutChecking": "03/05/2026 14:30:00",
+    "timestamp": "2026-03-05T14:30:00Z",
+    "status": "pending"
+  }
+]
+```
+
+### PATCH /api/cashouts/:id
+
+**Body**:
+```json
+{
+  "status": "paid",
+  "supervisorName": "Maria Rodriguez",
+  "observacion": "Cliente pidió efectivo | Supervisor: Verificado"
+}
+```
+
+**Response**: Updated cashout object

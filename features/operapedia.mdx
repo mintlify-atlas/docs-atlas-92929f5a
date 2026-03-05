@@ -1,0 +1,724 @@
+---
+title: 'Operapedia'
+description: 'Centralized credential management system for gaming companies with 8 information tabs and partner organization'
+icon: 'book'
+---
+
+## Overview
+
+Operapedia is a comprehensive knowledge base for managing gaming company credentials, payment methods, promotions, and operational information. It features real-time Firebase synchronization, partner categorization, and role-based edit controls.
+
+**Access:** [/operapedia/](/operapedia/) (requires authentication)
+
+## Architecture
+
+```mermaid
+graph TD
+    A[Firebase Realtime DB] -->|Sync| B[Operapedia App]
+    B -->|Read/Write| C[Companies Data]
+    B -->|Manage| D[Game Catalog]
+    C -->|8 Tabs| E[Credentials/Payments/Promos/etc]
+    D -->|Master List| F[Game Templates]
+```
+
+## Main Interface
+
+### Navigation Structure
+
+<Tabs>
+  <Tab title="Navbar">
+    Top navigation bar (operapedia/index.html:18-73):
+    
+    ```html
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <span class="brand-icon">📓</span>
+        <span class="brand-text">OPERAPEDIA</span>
+      </div>
+      <div class="navbar-center">
+        <input type="text" class="omnibar" id="globalSearch" 
+               placeholder="Buscar en todas las compañías...">
+      </div>
+      <div class="navbar-actions">
+        <button>🏠 Volver al Hub</button>
+        <label class="theme-switch">
+          <input type="checkbox" id="themeToggle">
+        </label>
+        <button id="catalogBtn" class="btn btn-catalog">📋 Catálogo</button>
+        <button id="editModeBtn" class="btn btn-edit" disabled>✏️ Editar</button>
+      </div>
+    </nav>
+    ```
+  </Tab>
+
+  <Tab title="Sidebar">
+    Left sidebar for company navigation (operapedia/index.html:78-98):
+    
+    ```html
+    <aside class="sidebar">
+      <div class="sidebar-search-wrapper">
+        <input type="text" class="sidebar-search" id="sidebarSearch" 
+               placeholder="Buscar compañía...">
+      </div>
+      <button id="addCompanyBtn" class="btn btn-add-company" 
+              style="display: none;">➕ Nueva compañía</button>
+      <div class="sidebar-section-title">
+        <span>Compañías</span>
+        <span class="sidebar-badge" id="companyCountBadge">0</span>
+      </div>
+      <div class="companies-list" id="companiesList"></div>
+    </aside>
+    ```
+  </Tab>
+
+  <Tab title="Main Content">
+    Content area with breadcrumb and tabs (operapedia/index.html:101-174):
+    
+    ```html
+    <main class="main-content">
+      <header class="main-header">
+        <div class="breadcrumb">Inicio › Company Name</div>
+        <h1 class="company-title">Company Name</h1>
+        <span class="partner-badge">🐲 Dragon</span>
+        <button class="delete-company-btn">🗑️ Eliminar</button>
+        
+        <div class="tabs-container">
+          <button class="tab tab-active" data-tab="credenciales">🎮 Credenciales</button>
+          <button class="tab" data-tab="deposito">💰 Depósito</button>
+          <button class="tab" data-tab="cashout">💸 Cashout</button>
+          <button class="tab" data-tab="consideraciones">📋 Consideraciones</button>
+          <button class="tab" data-tab="promociones">🎁 Promociones</button>
+          <button class="tab" data-tab="terminos">📜 Términos</button>
+          <button class="tab" data-tab="canales">📞 Canales</button>
+          <button class="tab" data-tab="notas">📝 Notas</button>
+        </div>
+      </header>
+      
+      <div class="content-area">
+        <!-- Tab content -->
+      </div>
+    </main>
+    ```
+  </Tab>
+</Tabs>
+
+## 8 Information Tabs
+
+### 1. Credenciales (Credentials)
+
+Game login credentials with real-time status toggles:
+
+<Accordion title="View Mode">
+  ```html
+  <div class="game-card">
+    <div class="game-header">
+      <div class="game-name">Golden Dragon</div>
+      <div class="status-toggle active" 
+           data-company-id="1" 
+           data-game-id="1"></div>
+    </div>
+    <div class="game-details">
+      <div class="detail-row">
+        <span class="detail-label">Username:</span>
+        <span class="detail-value">Dragons Cashier</span>
+        <button class="copy-btn" data-copy="Dragons Cashier">Copiar</button>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Link:</span>
+        <span class="detail-value">https://pos.goldendragoncity.com/pos/8093768</span>
+        <button class="link-btn" data-link="...">🔗</button>
+      </div>
+    </div>
+    <div class="last-modified">Última mod: 2025-12-12</div>
+  </div>
+  ```
+</Accordion>
+
+<Accordion title="Edit Mode">
+  ```html
+  <div class="game-card" data-edit-card="1">
+    <div class="game-header">
+      <div class="game-name">Golden Dragon</div>
+      <div class="status-toggle active"></div>
+    </div>
+    <div class="game-details">
+      <div class="detail-row">
+        <span class="detail-label">Username:</span>
+        <input class="edit-username-input" value="Dragons Cashier">
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Link:</span>
+        <input class="edit-link-input" value="https://...">
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="save-edit-btn">Guardar</button>
+      <button class="delete-game-btn">Eliminar</button>
+    </div>
+  </div>
+  ```
+</Accordion>
+
+**Firebase Sync** (app.js:447-477):
+
+```javascript
+const applyRemoteSettings = () => {
+  window.firebaseOnValue(window.gamesRef, snapshot => {
+    const data = snapshot.val();
+    Object.values(data).forEach(s => {
+      const company = companies.find(c => String(c.id) === String(s.companyId));
+      const game = company.games.find(g => String(g.id) === String(s.gameId));
+      game.active = s.active; // Real-time toggle sync
+      if (s.lastModified) game.lastModified = s.lastModified;
+    });
+    renderCompanies();
+  });
+};
+```
+
+### 2. Depósito (Deposit Methods)
+
+Payment methods for deposits:
+
+```javascript
+// View Mode (app.js:949-993)
+const renderDeposito = (company) => {
+  const metodos = company.metodosDeposito || [];
+  
+  metodos.forEach((metodo) => {
+    html += `
+      <div class="metodo-deposito-item">
+        <div class="metodo-titulo">${metodo.metodo || 'Método de depósito'}</div>
+        <div class="metodo-detalles">
+          <div class="metodo-row">
+            <span class="metodo-label">Proveedor:</span>
+            <span class="metodo-value">${metodo.proveedor || 'N/A'}</span>
+          </div>
+          <div class="metodo-row">
+            <span class="metodo-label">Monto mínimo:</span>
+            <span class="metodo-value">${metodo.montoMinimo || 'N/A'}</span>
+          </div>
+          <div class="metodo-row">
+            <span class="metodo-label">Monto máximo:</span>
+            <span class="metodo-value">${metodo.montoMaximo || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+};
+```
+
+### 3. Cashout (Withdrawal Methods)
+
+Same structure as Depósito but for withdrawals (app.js:1052-1150):
+
+```javascript
+const renderCashout = (company) => {
+  const metodos = company.metodosCashout || [];
+  // Renders identical structure to Depósito
+};
+```
+
+### 4. Consideraciones (Considerations)
+
+Free-form text area for cashout rules and special considerations:
+
+<Tabs>
+  <Tab title="View Mode">
+    ```html
+    <div class="tab-info-card">
+      <h3>Consideraciones para cashouts</h3>
+      <p style="white-space: pre-wrap;">${consideraciones}</p>
+    </div>
+    ```
+  </Tab>
+
+  <Tab title="Edit Mode">
+    ```html
+    <div class="edit-section">
+      <h3>Consideraciones para cashouts</h3>
+      <textarea id="consideracionesTextarea" 
+                class="edit-textarea" 
+                rows="10"
+                placeholder="Escribe las consideraciones...">
+      </textarea>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+### 5. Promociones (Promotions)
+
+List of active promotions:
+
+```javascript
+// app.js:1193-1263
+const renderPromociones = (company) => {
+  const promociones = company.promociones || [];
+  
+  promociones.forEach((promo, index) => {
+    html += `
+      <div class="promocion-simple-item">
+        <div class="promocion-simple-title">${promo.titulo || 'Promoción ' + (index + 1)}</div>
+        <div class="promocion-simple-desc">${promo.descripcion || 'Sin descripción'}</div>
+      </div>
+    `;
+  });
+};
+```
+
+### 6. Términos (Terms & Conditions)
+
+Link or text for T&C:
+
+```javascript
+// app.js:1267-1316
+const renderTerminos = (company) => {
+  const link = company.terminosLink || company.terminosCondiciones || '';
+  
+  if (link.startsWith('http://') || link.startsWith('https://')) {
+    container.innerHTML = `
+      <a href="${link}" target="_blank" class="terminos-link-btn">
+        Ver términos y condiciones completos →
+      </a>
+    `;
+  } else {
+    container.innerHTML = `<p style="white-space: pre-wrap;">${link}</p>`;
+  }
+};
+```
+
+### 7. Canales (Support Channels)
+
+Contact channels for customer support:
+
+```javascript
+// app.js:1320-1390
+const renderCanales = (company) => {
+  const canales = company.canales || company.canalesAtencion || [];
+  
+  canales.forEach((canal) => {
+    const nombre = canal.nombre || canal.tipo || 'Canal de atención';
+    const contacto = canal.contacto || canal.valor || canal.link || '';
+    
+    html += `
+      <div class="canal-item">
+        <div class="canal-nombre">${nombre}</div>
+        ${contacto ? `<div class="canal-contacto">${contacto}</div>` : ''}
+      </div>
+    `;
+  });
+};
+```
+
+### 8. Notas (Notes Timeline)
+
+Chronological notes with timestamps:
+
+```javascript
+// app.js:1393-1500
+const renderNotas = (company) => {
+  const notas = Array.isArray(company.notas) ? company.notas : [];
+  
+  // View mode shows timeline
+  notas.forEach((nota, index) => {
+    const timestamp = nota.timestamp || 'Sin fecha';
+    const author = nota.author || 'Anónimo';
+    const text = nota.text || nota.content || '';
+    
+    html += `
+      <div class="nota-timeline-item">
+        <div class="nota-timeline-marker"></div>
+        <div class="nota-timeline-content">
+          <div class="nota-timeline-header">
+            <span class="nota-timeline-author">${author}</span>
+            <span class="nota-timeline-date">${timestamp}</span>
+          </div>
+          <div class="nota-timeline-text">${text}</div>
+        </div>
+      </div>
+    `;
+  });
+};
+```
+
+## Partner System
+
+Companies can be grouped by partner (app.js:345-385):
+
+**Available Partners:**
+- 🐲 **Dragon**
+- 🔒 **Tierlock**
+- 🎮 **Taparcadia**
+- ⭐ **Wysaro**
+
+### Partner Filtering
+
+```javascript
+// Filter chips in navbar
+<button class="filter-chip partner-chip" data-partner="Dragon">🐲 Dragon</button>
+<button class="filter-chip partner-chip" data-partner="Tierlock">🔒 Tierlock</button>
+<button class="filter-chip partner-chip" data-partner="Taparcadia">🎮 Taparcadia</button>
+<button class="filter-chip partner-chip" data-partner="Wysaro">⭐ Wysaro</button>
+```
+
+### Partner Badge Assignment
+
+In edit mode, supervisors can assign/change partners (app.js:560-611):
+
+```javascript
+partnerBadge.onclick = async () => {
+  if (!isEditMode || !currentCompany) return;
+  
+  const sel = document.createElement('select');
+  sel.innerHTML = `<option value="">Sin partner</option>` +
+    PARTNERS.map(p => 
+      `<option value="${p}" ${company.partner === p ? 'selected' : ''}>
+        ${PARTNER_ICONS[p]} ${p}
+      </option>`
+    ).join('');
+  
+  partnerBadge.replaceWith(sel);
+  sel.focus();
+  
+  sel.addEventListener('change', async () => {
+    company.partner = sel.value || '';
+    await window.firebaseSet(
+      window.firebaseRef(window.db, `companies/${company.id}/partner`),
+      company.partner
+    );
+  });
+};
+```
+
+## Search System
+
+### Global Omnibar Search
+
+Searches across all companies and tabs (operapedia/index.html:24-27):
+
+```html
+<input type="text" class="omnibar" id="globalSearch" 
+       placeholder="Buscar en todas las compañías...">
+```
+
+### Search Filters Panel
+
+Expands on focus with category filters (operapedia/index.html:28-47):
+
+```html
+<div class="search-filters" id="searchFilters">
+  <div class="filter-group">
+    <span class="filter-group-label">Buscar en:</span>
+    <button class="filter-chip" data-category="credenciales">🎮 Credenciales</button>
+    <button class="filter-chip" data-category="deposito">💰 Depósito</button>
+    <button class="filter-chip" data-category="cashout">💸 Cashout</button>
+    <button class="filter-chip" data-category="consideraciones">📋 Consideraciones</button>
+    <button class="filter-chip" data-category="promociones">🎁 Promociones</button>
+    <button class="filter-chip" data-category="terminos">📜 Términos</button>
+    <button class="filter-chip" data-category="canales">📞 Canales</button>
+    <button class="filter-chip" data-category="notas">📝 Notas</button>
+  </div>
+</div>
+```
+
+**Filter Persistence** (app.js:294-309):
+
+```javascript
+let activeCategoryFilters = [];
+const savedCatFilters = localStorage.getItem('operapediaCategoryFilters');
+if (savedCatFilters) {
+  try { 
+    activeCategoryFilters = JSON.parse(savedCatFilters); 
+  } catch { 
+    activeCategoryFilters = []; 
+  }
+}
+
+const saveCategoryFilters = () => {
+  localStorage.setItem('operapediaCategoryFilters', JSON.stringify(activeCategoryFilters));
+};
+```
+
+## Game Catalog
+
+**Master list** of all available games (app.js:96-252):
+
+### Catalog Modal
+
+```html
+<div class="modal-content">
+  <h2>📋 Catálogo de Juegos</h2>
+  <p>Gestiona la lista maestra de juegos. Estos nombres aparecerán como opciones al agregar juegos a compañías.</p>
+  
+  <div id="catalogList">
+    <!-- Game entries with name and link -->
+  </div>
+  
+  <button id="addCatalogGameBtn">+ Agregar juego al catálogo</button>
+  <button id="saveCatalogBtn">Guardar catálogo</button>
+</div>
+```
+
+### Catalog Entry Structure
+
+```javascript
+let gameCatalog = []; // [{id, name, link}]
+
+// Load from Firebase
+window.firebaseOnValue(window.gameCatalogRef, snapshot => {
+  const data = snapshot.val() || {};
+  gameCatalog = Object.entries(data).map(([key, val]) => ({
+    id: val.id ?? key,
+    name: val.name || '',
+    link: val.link || ''
+  }));
+});
+```
+
+### Using Catalog in Edit Mode
+
+```html
+<select class="new-game-select">
+  <option value="" disabled selected>Selecciona del catálogo...</option>
+  <option value="1" data-link="https://...">Golden Dragon</option>
+  <option value="2" data-link="https://...">Orion Stars</option>
+  <!-- ... -->
+  <option value="__custom__">✏️ Otro (escribir nombre)</option>
+</select>
+```
+
+When a catalog game is selected, the link is auto-filled:
+
+```javascript
+gameSelect.addEventListener('change', () => {
+  const val = gameSelect.value;
+  if (val === '__custom__') {
+    customRow.style.display = 'flex'; // Show name input
+  } else {
+    const selectedOption = gameSelect.options[gameSelect.selectedIndex];
+    const catalogLink = selectedOption.getAttribute('data-link') || '';
+    linkInput.value = catalogLink; // Auto-fill link
+  }
+});
+```
+
+## Edit Mode
+
+**Available to:** Supervisors only
+
+### Activation
+
+```javascript
+// operapedia/index.html:222-229
+if (user.role === 'supervisor') {
+  localStorage.setItem('credentialsAdminLoggedIn', 'true');
+} else {
+  localStorage.removeItem('credentialsAdminLoggedIn');
+  document.getElementById('editModeBtn').style.display = 'none';
+  document.getElementById('catalogBtn').style.display = 'none';
+}
+```
+
+### Edit Controls
+
+<CardGroup cols={2}>
+  <Card title="Edit Button" icon="pen">
+    Toggles edit mode on current company:
+    ```javascript
+    editModeBtn.addEventListener('click', () => {
+      isEditMode = !isEditMode;
+      updateUI();
+    });
+    ```
+  </Card>
+
+  <Card title="Save Changes" icon="floppy-disk">
+    Each tab has specific save logic:
+    ```javascript
+    const saveCurrentTab = () => {
+      switch (currentTab) {
+        case 'credenciales': saveGames(); break;
+        case 'deposito': saveDeposito(); break;
+        // ...
+      }
+    };
+    ```
+  </Card>
+
+  <Card title="Add Company" icon="plus">
+    Button appears in edit mode:
+    ```html
+    <button id="addCompanyBtn" style="display: none;">
+      ➕ Nueva compañía
+    </button>
+    ```
+  </Card>
+
+  <Card title="Delete Company" icon="trash">
+    Requires supervisor password:
+    ```javascript
+    const pwd = await showPasswordModal(
+      'Contraseña de supervisor',
+      'Confirma la eliminación.'
+    );
+    if (pwd !== ADMIN_PASSWORD) return;
+    ```
+  </Card>
+</CardGroup>
+
+## Theme Switcher
+
+```javascript
+// app.js:254-275
+let currentTheme = localStorage.getItem('operapediaTheme') || 'dark';
+
+const applyTheme = (theme) => {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggleInput.checked = theme === 'light';
+};
+
+const toggleTheme = () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(currentTheme);
+  localStorage.setItem('operapediaTheme', currentTheme);
+};
+
+themeToggleInput.addEventListener('change', toggleTheme);
+applyTheme(currentTheme);
+```
+
+**Toggle UI:**
+```html
+<label class="theme-switch">
+  <input type="checkbox" id="themeToggle">
+  <span class="theme-slider">
+    <span class="theme-icon-light">☀️</span>
+    <span class="theme-icon-dark">🌙</span>
+  </span>
+</label>
+```
+
+## Firebase Integration
+
+### Configuration
+
+```javascript
+// operapedia/index.html:181-207
+const firebaseConfig = {
+  apiKey: "AIzaSyBvfknEWRrS_0As8sDcQVGfH0RKydzw93A",
+  authDomain: "credentials-toggles.firebaseapp.com",
+  databaseURL: "https://credentials-toggles-default-rtdb.firebaseio.com",
+  projectId: "credentials-toggles",
+  storageBucket: "credentials-toggles.firebasestorage.app",
+  messagingSenderId: "274936685002",
+  appId: "1:274936685002:web:435009cb0b36c65a9def33",
+  measurementId: "G-CDQM9CG3LF"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Expose globally
+window.db = db;
+window.gamesRef = ref(db, "gamesConfig");
+window.companiesRef = ref(db, "companies");
+window.gameCatalogRef = ref(db, "gameCatalog");
+window.firebaseOnValue = onValue;
+window.firebaseSet = set;
+window.firebaseRef = ref;
+```
+
+### Real-Time Updates
+
+```javascript
+// Listen to companies changes
+window.firebaseOnValue(window.companiesRef, snapshot => {
+  const data = snapshot.val() || {};
+  companies = Object.entries(data).map(([id, company]) => ({
+    id,
+    ...company
+  }));
+  renderCompanies();
+});
+```
+
+## Company Data Structure
+
+```javascript
+{
+  id: 1,
+  name: "Play Play Play",
+  color: "#3B82F6",
+  partner: "Dragon", // Optional: Dragon, Tierlock, Taparcadia, Wysaro
+  games: [
+    {
+      id: 1,
+      name: "Golden Dragon",
+      username: "Dragons Cashier",
+      link: "https://pos.goldendragoncity.com/pos/8093768",
+      active: true,
+      lastModified: "2025-12-12"
+    }
+  ],
+  metodosDeposito: [
+    {
+      metodo: "Tarjeta de crédito",
+      proveedor: "Visa",
+      montoMinimo: "$10",
+      montoMaximo: "$5000"
+    }
+  ],
+  metodosCashout: [...],
+  consideracionesCashout: "Texto libre...",
+  promociones: [
+    {
+      titulo: "Bono de bienvenida",
+      descripcion: "100% hasta $500"
+    }
+  ],
+  terminosLink: "https://example.com/terms",
+  canales: [
+    {
+      nombre: "WhatsApp",
+      contacto: "+1234567890"
+    }
+  ],
+  notas: [
+    {
+      timestamp: "2025-01-15 14:30",
+      author: "John Doe",
+      text: "Updated credentials"
+    }
+  ]
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Partners for Organization">
+    Assign companies to partners (Dragon, Tierlock, etc.) to group related brands and enable filtered views.
+  </Accordion>
+
+  <Accordion title="Keep Game Catalog Updated">
+    Maintain the master game catalog to ensure consistent game names and auto-filled links across companies.
+  </Accordion>
+
+  <Accordion title="Document in Notes Tab">
+    Use the Notes timeline to track important changes, outages, or special instructions with timestamps.
+  </Accordion>
+
+  <Accordion title="Toggle Games Proactively">
+    Use the active/inactive toggle to disable games that are temporarily unavailable instead of deleting credentials.
+  </Accordion>
+
+  <Accordion title="Search Before Adding">
+    Use the sidebar and omnibar search to check if a company already exists before creating a duplicate.
+  </Accordion>
+
+  <Accordion title="Fill All Tabs">
+    Complete all 8 tabs for comprehensive company documentation, especially Consideraciones and Canales.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,156 @@
+---
+title: Submitting a Cashout
+description: Learn how to submit cashouts with operation codes and observations
+---
+
+This guide covers how operators submit cashouts for verification in the system.
+
+## Prerequisites
+
+- Active operator account with authentication token
+- Valid operation code from the system
+- Company selection available
+
+## Submission Workflow
+
+<Steps>
+  <Step title="Fill Required Fields">
+    The cashout form requires three mandatory fields:
+    
+    - **Operation Code** (`operationCode`): The unique identifier for the transaction
+    - **Operator Name** (`operatorName`): Auto-filled from your logged-in user profile
+    - **Company** (`company`): Select from the dropdown list of available companies
+
+    ```html
+    <form id="cashoutForm">
+      <input type="text" id="operationCode" required>
+      <input type="text" id="operatorName" required readonly>
+      <select id="company" required>
+        <option value="">Seleccione una compañía</option>
+      </select>
+      <button type="submit">Enviar para verificación</button>
+    </form>
+    ```
+  </Step>
+
+  <Step title="Add Observations (Optional)">
+    After clicking submit, a modal appears asking if you have any observations:
+    
+    - Click **SÍ** to add an observation in the text area
+    - Click **NO** to submit without observations
+    
+    The observation is stored in the `observacion` field of the cashout record.
+
+    ```javascript
+    cashoutPendiente = {
+      operationCode: document.getElementById('operationCode').value,
+      operatorName: currentUser.fullName,
+      company: document.getElementById('company').value,
+      observacion: "" // or your text
+    };
+    ```
+  </Step>
+
+  <Step title="Submit to API">
+    The system sends a POST request to create the cashout:
+
+    ```javascript
+    await apiFetch(`/cashouts`, {
+      method: "POST",
+      body: JSON.stringify(cashoutPendiente)
+    });
+    ```
+
+    **API Endpoint**: `POST https://general-cashouts.onrender.com/api/cashouts`
+  </Step>
+
+  <Step title="Confirmation">
+    On success:
+    - Green success message appears: "¡Cash out registrado correctamente! Esperando verificación."
+    - Form is reset automatically
+    - Operator name remains pre-filled
+    - Cashout enters the pending queue with status `pending`
+  </Step>
+</Steps>
+
+## Observation Modal Flow
+
+The observation modal (`#observacionModal`) provides two paths:
+
+### Path 1: With Observation
+
+```javascript
+document.getElementById('btnObservacionSi').addEventListener('click', () => {
+  document.getElementById('observacionInputContainer').style.display = 'block';
+});
+
+document.getElementById('btnEnviarConObservacion').addEventListener('click', async () => {
+  const obs = document.getElementById('observacionTexto').value.trim();
+  if (!obs) return showNotification("Por favor, escribe una observación o selecciona NO.", "error");
+  
+  cashoutPendiente.observacion = obs;
+  await enviarCashout();
+});
+```
+
+### Path 2: Without Observation
+
+```javascript
+document.getElementById('btnObservacionNo').addEventListener('click', async () => {
+  cashoutPendiente.observacion = "";
+  await enviarCashout();
+});
+```
+
+## Form Validation
+
+- All three fields are **required** (`required` attribute)
+- Operator name is **read-only** and auto-populated from `currentUser.fullName`
+- Company dropdown is populated from the `/rules` API endpoint
+- Empty observations are allowed (treated as `""`)
+
+## Authentication
+
+All requests include the JWT token in headers:
+
+```javascript
+const headers = { 'Content-Type': 'application/json' };
+if (token) headers['Authorization'] = `Bearer ${token}`;
+```
+
+If the token is invalid (401/403), the user is automatically logged out and redirected.
+
+## Success/Error Messages
+
+<Accordion title="Success Scenarios">
+  - `#operatorSuccess` div displays: "¡Cash out registrado correctamente! Esperando verificación."
+  - Notification toast shows: "¡Cash out enviado correctamente!"
+  - Form resets, ready for next submission
+</Accordion>
+
+<Accordion title="Error Scenarios">
+  - `#operatorError` div displays: "Ha ocurrido un error al registrar el cash out. Por favor, inténtalo de nuevo."
+  - Notification toast shows: "Error al subir cash out."
+  - Form data is preserved for retry
+</Accordion>
+
+## Code Reference
+
+The complete submission logic is in `index.html:709-775`:
+
+```javascript
+cashoutForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  document.getElementById('operatorSuccess').style.display = 'none';
+  document.getElementById('operatorError').style.display = 'none';
+
+  cashoutPendiente = {
+    operationCode: document.getElementById('operationCode').value,
+    operatorName: currentUser.fullName,
+    company: document.getElementById('company').value,
+    observacion: ""
+  };
+
+  document.getElementById('observacionModal').style.display = 'flex';
+});
+```

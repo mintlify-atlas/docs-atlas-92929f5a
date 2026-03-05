@@ -1,0 +1,444 @@
+---
+title: Statistics & Leaderboard
+description: View cashout statistics, rankings, filters, and leaderboard data
+---
+
+This guide covers the statistics dashboard and leaderboard features for analyzing cashout performance.
+
+## Statistics Modal
+
+The stats modal provides comprehensive analytics on cashout performance.
+
+### Accessing Stats
+
+Click the **"📊 Stats"** button in the sidebar:
+
+```javascript
+statsBtn.addEventListener('click', () => {
+  desactivarBotones();
+  statsBtn.classList.add('active');
+  document.getElementById('statsModal').style.display = 'flex';
+  
+  // Set default date range to last 30 days
+  const hoy = new Date();
+  document.getElementById('statsEndDate').valueAsDate = hoy;
+  const hace30dias = new Date();
+  hace30dias.setDate(hace30dias.getDate() - 30);
+  document.getElementById('statsStartDate').valueAsDate = hace30dias;
+  
+  cargarEstadisticas();
+});
+```
+
+## Filter Options
+
+<Steps>
+  <Step title="Date Range">
+    Select start and end dates to filter statistics:
+
+    ```html
+    <input type="date" id="statsStartDate">
+    <input type="date" id="statsEndDate">
+    ```
+
+    **Default**: Last 30 days
+  </Step>
+
+  <Step title="Company Filter">
+    Filter by specific company or view all:
+
+    ```html
+    <select id="statsCompanyFilter">
+      <option value="">Todas las compañías</option>
+      <!-- Populated from /rules API -->
+    </select>
+    ```
+  </Step>
+
+  <Step title="Apply Filters">
+    Click **"Aplicar Filtros"** to reload statistics with selected filters:
+
+    ```javascript
+    document.getElementById('applyStatsFilters').addEventListener('click', async () => {
+      await cargarEstadisticas();
+    });
+    ```
+  </Step>
+</Steps>
+
+## Loading Statistics
+
+```javascript
+async function cargarEstadisticas() {
+  const startDate = document.getElementById('statsStartDate').value;
+  const endDate = document.getElementById('statsEndDate').value;
+  const company = document.getElementById('statsCompanyFilter').value;
+
+  let query = `?startRow=9082`;
+  if (startDate) query += `&startDate=${startDate}`;
+  if (endDate) query += `&endDate=${endDate}`;
+  if (company) query += `&company=${encodeURIComponent(company)}`;
+
+  const response = await apiFetch(`/stats${query}`);
+  const data = await response.json();
+  statsData = data.history || [];
+  
+  // Update UI with statistics
+}
+```
+
+**API Endpoint**: `GET /api/stats?startRow=9082&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&company=CompanyName`
+
+## General Statistics Cards
+
+Four main metrics are displayed at the top:
+
+### 1. Cashouts Aprobados (Approved)
+```javascript
+document.getElementById('totalApproved').textContent = data.general.totalApproved.toLocaleString();
+```
+- Icon: ✅
+- Color: Green (#27ae60)
+
+### 2. Cashouts Rechazados (Rejected)
+```javascript
+document.getElementById('totalRejected').textContent = data.general.totalRejected.toLocaleString();
+```
+- Icon: ❌
+- Color: Red (#e74c3c)
+
+### 3. Tasa de Aprobación (Approval Rate)
+```javascript
+document.getElementById('approvalRate').textContent = `${data.general.approvalRate.toFixed(1)}%`;
+```
+- Icon: 📊
+- Color: Blue (#3498db)
+
+### 4. Total Procesados (Total Processed)
+```javascript
+document.getElementById('totalProcessed').textContent = data.general.totalProcessed.toLocaleString();
+```
+- Icon: 📝
+- Color: Orange (#f39c12)
+
+## Operator Rankings
+
+Table showing performance by operator:
+
+```javascript
+const tbodyRanking = document.getElementById('rankingTableBody');
+if (data.byOperator.length > 0) {
+  tbodyRanking.innerHTML = data.byOperator.map((op, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${op.name}</td>
+      <td style="color: #27ae60;">${op.approved}</td>
+      <td style="color: #e74c3c;">${op.rejected}</td>
+      <td>${op.total}</td>
+      <td style="color: ${op.rate >= 90 ? '#27ae60' : '#e74c3c'};">${op.rate.toFixed(1)}%</td>
+    </tr>
+  `).join('');
+}
+```
+
+**Columns**:
+- `#`: Rank number
+- `Operador`: Operator name
+- `Aprobados`: Approved count (green)
+- `Rechazados`: Rejected count (red)
+- `Total`: Total cashouts
+- `Tasa`: Approval rate (green if 90% or higher, red if below 90%)
+
+## Historical Records Table
+
+Full history with pagination and search:
+
+<Steps>
+  <Step title="Search by Operation Code">
+    ```html
+    <input 
+      type="text" 
+      id="searchHistory" 
+      placeholder="🔍 Buscar por código de operación..."
+    >
+    ```
+
+    ```javascript
+    document.getElementById('searchHistory').addEventListener('input', filtrarHistorico);
+    ```
+  </Step>
+
+  <Step title="Filter by Operator">
+    ```html
+    <select id="operatorFilter">
+      <option value="">Todos los operadores</option>
+      <!-- Dynamically populated -->
+    </select>
+    ```
+
+    ```javascript
+    const operadores = [...new Set(data.map(item => item.operatorName))].sort();
+    operadores.forEach(op => operatorFilter.appendChild(new Option(op, op)));
+    ```
+  </Step>
+
+  <Step title="Pagination">
+    50 items per page with prev/next navigation:
+
+    ```javascript
+    const itemsPerPage = 50;
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageData = filteredStatsData.slice(start, end);
+    ```
+
+    ```html
+    <button id="prevPage">◄ Anterior</button>
+    <span id="paginationInfo">Mostrando 1-50 de 200</span>
+    <button id="nextPage">Siguiente ►</button>
+    ```
+  </Step>
+</Steps>
+
+### Historical Table Columns
+
+| Column | Data | Format |
+|--------|------|--------|
+| Código | `operationCode` | Monospace font |
+| Operador | `operatorName` | Plain text |
+| Compañía | `company` | Plain text |
+| Fecha/Hora | `cashoutTime` | Timestamp |
+| Estado | `status` | ✅ (approved) / ❌ (rejected) |
+| Supervisor | `supervisorName` | Plain text or `-` |
+
+```javascript
+tbody.innerHTML = pageData.map(item => `
+  <tr>
+    <td style="font-family: monospace; font-weight: 600;">${item.operationCode}</td>
+    <td>${item.operatorName}</td>
+    <td>${item.company}</td>
+    <td style="text-align: center; font-size: 0.9em;">${item.cashoutTime}</td>
+    <td style="text-align: center; font-size: 1.3em;">${item.status === 'approved' ? '✅' : '❌'}</td>
+    <td>${item.supervisorName || '-'}</td>
+  </tr>
+`).join('');
+```
+
+## Shift Performance (Promedios por Turno)
+
+Displays average cashouts by shift:
+
+- **🌅 Mañana**: 7:00-14:30
+- **🌇 Tarde**: 14:30-22:00
+- **🌙 Noche**: 22:00-7:00
+
+**Table Columns**:
+- Turno (Shift name)
+- Total Cashouts
+- Promedio/día (Average per day)
+- % del Total (Percentage of total)
+
+## Operator Shift Performance
+
+Breaks down each operator's performance by shift:
+
+```html
+<thead>
+  <tr>
+    <th>Operador</th>
+    <th>🌅 Mañana<br><small>(7:00-14:30)</small></th>
+    <th>🌇 Tarde<br><small>(14:30-22:00)</small></th>
+    <th>🌙 Noche<br><small>(22:00-7:00)</small></th>
+    <th>Mejor Turno</th>
+  </tr>
+</thead>
+<tbody id="operatorShiftTableBody"></tbody>
+```
+
+## Company Statistics
+
+Cashout breakdown by company:
+
+**Columns**:
+- Compañía (Company name)
+- Aprobados (Approved count)
+- Rechazados (Rejected count)
+- Total (Total cashouts)
+- Tasa (Approval rate %)
+
+```html
+<tbody id="companyTableBody"></tbody>
+```
+
+## Leaderboard Modal
+
+Separate leaderboard showing top performers.
+
+### Accessing Leaderboard
+
+```javascript
+leaderboardBtn.addEventListener('click', async () => {
+  desactivarBotones();
+  leaderboardBtn.classList.add('active');
+  leaderboardModal.style.display = 'flex';
+  await cargarLeaderboard();
+});
+```
+
+### Loading Leaderboard Data
+
+```javascript
+async function cargarLeaderboard() {
+  const resp = await apiFetch(`/leaderboard`);
+  const data = await resp.json();
+
+  if (!data.ranking || data.ranking.length === 0) {
+    leaderboardContent.innerHTML = '<p>No hay datos disponibles.</p>';
+    return;
+  }
+
+  const medallas = ['🥇', '🥈', '🥉'];
+  let html = `<div>📊 Total: ${data.totalCashouts} cashouts verificados</div>`;
+
+  data.ranking.forEach((supervisor, index) => {
+    const esTop3 = index < 3;
+    html += `
+      <div style="border: 2px solid ${esTop3 ? 'gold' : 'teal'}; background: ${esTop3 ? 'rgba(255,215,0,0.05)' : 'rgba(42,157,143,0.05)'}">
+        <span>${medallas[index] || `#${index + 1}`}</span>
+        <h3>${supervisor.name}</h3>
+        <p>📊 Cashouts: ${supervisor.totalVerificados}</p>
+        <p>⏱️ Promedio: ${supervisor.tiempoPromedio}</p>
+      </div>
+    `;
+  });
+  leaderboardContent.innerHTML = html;
+}
+```
+
+**API Endpoint**: `GET /api/leaderboard`
+
+### Leaderboard Display
+
+- **Top 3**: 🥇 🥈 🥉 medals with gold background
+- **Others**: Rank number with teal background
+- **Data Shown**:
+  - Supervisor name
+  - Total cashouts verified
+  - Average processing time
+
+## Filter Logic
+
+```javascript
+function filtrarHistorico() {
+  const search = document.getElementById('searchHistory').value.toLowerCase();
+  const op = document.getElementById('operatorFilter').value;
+  
+  filteredStatsData = statsData.filter(item => 
+    (!search || item.operationCode.toLowerCase().includes(search)) && 
+    (!op || item.operatorName === op)
+  );
+  
+  currentPage = 1;
+  renderHistoricoPage();
+}
+```
+
+## Loading States
+
+<Accordion title="Initial Load">
+  ```javascript
+  const loading = document.getElementById('statsLoading');
+  loading.style.display = 'block';
+  // ... fetch data ...
+  loading.style.display = 'none';
+  ```
+
+  Shows: "⏳ Cargando estadísticas..."
+</Accordion>
+
+<Accordion title="Empty States">
+  Each table has a fallback message when no data is available:
+  ```html
+  <tr>
+    <td colspan="6" style="padding: 40px; text-align: center; opacity: 0.7;">
+      ⏳ Cargando datos...
+    </td>
+  </tr>
+  ```
+</Accordion>
+
+## API Response Structure
+
+### GET /api/stats
+
+**Response**:
+```json
+{
+  "general": {
+    "totalApproved": 1250,
+    "totalRejected": 150,
+    "totalProcessed": 1400,
+    "approvalRate": 89.3
+  },
+  "byOperator": [
+    {
+      "name": "Juan Perez",
+      "approved": 450,
+      "rejected": 50,
+      "total": 500,
+      "rate": 90.0
+    }
+  ],
+  "history": [
+    {
+      "operationCode": "OP-12345",
+      "operatorName": "Juan Perez",
+      "company": "Betsson",
+      "cashoutTime": "03/05/2026 14:30:00",
+      "status": "approved",
+      "supervisorName": "Maria Rodriguez"
+    }
+  ]
+}
+```
+
+### GET /api/leaderboard
+
+**Response**:
+```json
+{
+  "totalCashouts": 1400,
+  "ranking": [
+    {
+      "name": "Maria Rodriguez",
+      "totalVerificados": 450,
+      "tiempoPromedio": "2m 30s"
+    }
+  ]
+}
+```
+
+## Pagination Controls
+
+```javascript
+document.getElementById('prevPage').addEventListener('click', () => {
+  if (currentPage > 1) {
+    currentPage--;
+    renderHistoricoPage();
+  }
+});
+
+document.getElementById('nextPage').addEventListener('click', () => {
+  const maxPage = Math.ceil(filteredStatsData.length / itemsPerPage);
+  if (currentPage < maxPage) {
+    currentPage++;
+    renderHistoricoPage();
+  }
+});
+```
+
+**Pagination Info**:
+```javascript
+document.getElementById('paginationInfo').textContent = 
+  `Mostrando ${start + 1}-${Math.min(end, filteredStatsData.length)} de ${filteredStatsData.length}`;
+```

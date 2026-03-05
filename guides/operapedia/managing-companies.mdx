@@ -1,0 +1,231 @@
+---
+title: "Managing Companies"
+description: "Create, edit, and organize company information in Operapedia"
+---
+
+## Overview
+
+Operapedia allows supervisors to manage gaming company information across multiple partners. Each company contains credentials, payment methods, promotions, and other critical operational data.
+
+<Note>
+  Company management requires **supervisor access** and edit mode to be enabled.
+</Note>
+
+## Creating a New Company
+
+Supervisors can create new companies with full configuration options.
+
+<Steps>
+  <Step title="Enable Edit Mode">
+    Click the **Edit** button in the navbar and enter the admin password (`superctrl2023`).
+    
+    ```javascript operapedia/app.js
+    // Admin password check
+    const ADMIN_PASSWORD = 'superctrl2023';
+    let adminLoggedIn = localStorage.getItem('credentialsAdminLoggedIn') === 'true';
+    ```
+    
+    Once authenticated, the session is saved in `localStorage` so you won't need to re-enter it.
+  </Step>
+
+  <Step title="Open Create Company Modal">
+    Click the **➕ Nueva compañía** button in the sidebar. This button is only visible when edit mode is active.
+    
+    The modal includes:
+    - Company name (required, validated for duplicates)
+    - Color identifier (hex color picker + 12 preset colors)
+    - Partner/License selection (Dragon, Tierlock, Taparcadia, Wysaro)
+    - Optional: Clone games from existing company in the same partner
+  </Step>
+
+  <Step title="Configure Company Details">
+    Fill in the required fields:
+    
+    **Company Name**: Must be unique across all companies
+    
+    **Color Identifier**: Choose a color for visual distinction in the sidebar. You can:
+    - Enter a hex color manually
+    - Select from 12 preset colors with live preview
+    
+    **Partner**: Select the licensing partner (required)
+    - 🐲 Dragon
+    - 🔒 Tierlock
+    - 🎮 Taparcadia
+    - ⭐ Wysaro
+  </Step>
+
+  <Step title="Add Initial Games (Optional)">
+    After selecting a partner, you can clone games from an existing company:
+    
+    - Select a company from the dropdown (filtered by same partner)
+    - The system copies: game name, username, and link
+    - You can manually add or remove games before creating
+    - Each game row includes: Name, Username, Link fields
+    
+    Click **+ Agregar juego** to add manual entries.
+  </Step>
+
+  <Step title="Create Company">
+    Click **Crear compañía** to save. The system:
+    
+    - Validates the company name is unique
+    - Creates the Firebase record at `companies/{companyId}`
+    - Adds an automatic creation note with timestamp
+    - Redirects you to the new company view
+  </Step>
+</Steps>
+
+## Editing Company Information
+
+Once a company is selected, you can edit its information across 8 tabs.
+
+### Company Header
+
+The company header displays:
+- **Company name** with color bar indicator
+- **Partner badge** (e.g., 🐲 Dragon)
+- **Delete button** (supervisor only, requires password confirmation)
+
+<Tabs>
+  <Tab title="Changing Partner">
+    In edit mode, click the partner badge to open a dropdown selector:
+    
+    ```javascript operapedia/app.js
+    // Partner change saves immediately to Firebase
+    await firebaseSet(firebaseRef(db, `companies/${companyId}/partner`), newPartner);
+    ```
+    
+    Changes are saved immediately without requiring a manual save action.
+  </Tab>
+  
+  <Tab title="Deleting Company">
+    The delete button requires:
+    1. **First confirmation modal** showing the company name
+    2. **Supervisor password verification** (second modal)
+    3. Complete deletion of the Firebase node at `companies/{companyId}`
+    
+    <Warning>
+      Company deletion is **permanent** and cannot be undone. All credentials, payment methods, and historical data will be lost.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## 8 Information Tabs
+
+Each company has 8 tabs for organizing different types of information:
+
+| Tab | Icon | Purpose |
+|-----|------|--------|
+| Credenciales | 🎮 | Game credentials with username/password |
+| Depósito | 💰 | Deposit payment methods and limits |
+| Cashout | 💸 | Withdrawal methods and limits |
+| Consideraciones | 📋 | Cashout considerations and notes |
+| Promociones | 🎁 | Active promotions and offers |
+| Términos | 📜 | Terms and conditions URL or text |
+| Canales | 📞 | Support channels (email, chat, phone) |
+| Notas | 📝 | Timeline of internal notes |
+
+<Note>
+  See the dedicated guides for [Credentials](/guides/operapedia/credentials), [Payment Methods](/guides/operapedia/payment-methods), and [Catalog](/guides/operapedia/catalog) for detailed tab usage.
+</Note>
+
+## Firebase Data Structure
+
+Companies are stored in Firebase Realtime Database with this structure:
+
+```json
+companies/
+  {companyId}/
+    id: string|number
+    name: "Company Name"
+    color: "#5e6ad2"
+    partner: "Dragon" | "Tierlock" | "Taparcadia" | "Wysaro" | ""
+    games/
+      {gameId}/
+        id: string|number
+        name: "Game Name"
+        username: "user123"
+        link: "https://..."
+        active: boolean
+        lastModified: "YYYY-MM-DD"
+    metodosDeposito: [...]
+    metodosCashout: [...]
+    consideracionesCashout: "text"
+    promociones: [{titulo, descripcion}]
+    terminosLink: "https://..."
+    canales: ["email@example.com", ...]
+    notas: [{texto: "Note", fecha: "2026-03-05T..."}]
+```
+
+## Search and Filtering
+
+### Sidebar Search
+
+The sidebar includes a search box (`#sidebarSearch`) that filters companies in real-time by name.
+
+### Partner Filtering
+
+Filter companies by partner using chips in the global omnibar. Active filters:
+- Persist in `localStorage` as `operapediaPartnerFilters`
+- Also filter the sidebar company list
+- Work in conjunction with category filters
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Naming Conventions">
+    - Use official company names
+    - Include region/market if multiple versions exist (e.g., "Company BR", "Company MX")
+    - Avoid special characters that may cause display issues
+  </Accordion>
+  
+  <Accordion title="Color Selection">
+    - Choose distinct colors for easy visual identification
+    - Avoid similar colors for companies you frequently switch between
+    - Consider using partner-specific color themes
+  </Accordion>
+  
+  <Accordion title="Partner Organization">
+    - Group related companies under the same partner
+    - Use partner filtering to focus on specific license groups
+    - Import games from similar companies within the same partner
+  </Accordion>
+  
+  <Accordion title="Data Completeness">
+    - Fill in all 8 tabs for comprehensive company information
+    - Keep payment methods updated with current limits
+    - Add notes for any special procedures or recent changes
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot See Create Company Button">
+    The **➕ Nueva compañía** button requires:
+    - Supervisor role
+    - Edit mode enabled (click Edit button in navbar)
+    - Admin password authentication
+  </Accordion>
+  
+  <Accordion title="Company Name Already Exists">
+    Company names must be unique. If you receive a duplicate error:
+    - Check if the company already exists in the sidebar
+    - Add a distinguishing suffix (region, partner, etc.)
+    - Consider if this is truly a new company or should be merged
+  </Accordion>
+  
+  <Accordion title="Partner Badge Not Clickable">
+    The partner badge is only editable when:
+    - Edit mode is active
+    - A company is selected
+    - You have supervisor permissions
+  </Accordion>
+  
+  <Accordion title="Delete Button Missing">
+    The delete button (🗑️) is only visible when:
+    - Edit mode is enabled
+    - A company is currently selected
+    - You are logged in as a supervisor
+  </Accordion>
+</AccordionGroup>

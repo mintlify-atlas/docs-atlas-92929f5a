@@ -1,0 +1,273 @@
+---
+title: Team Management
+description: Create, manage, and delete user accounts in OPS Workspace
+---
+
+## Overview
+
+Supervisors have access to the **Manage Team** section where they can create user accounts, assign roles, change passwords, and delete users. This centralized user management system controls access to all applications within OPS Workspace.
+
+## Accessing Team Management
+
+The **Manage Team** button is only visible to users with the `supervisor` role:
+
+1. Log in to OPS Workspace
+2. Navigate to the Cashouts application
+3. Click the **👥 Manage Team** button in the sidebar
+
+<Note>
+The Manage Team button is automatically hidden for analysts and chat agents based on their role permissions.
+</Note>
+
+## Creating New Users
+
+### User Creation Form
+
+To create a new user account, fill out the following fields:
+
+| Field | Description | Example |
+|-------|-------------|--------|
+| **Full Name** | User's complete name | `Juan Perez` |
+| **Username** | Login username (lowercase, use dots for spaces) | `juan.perez` |
+| **Password** | Initial password (minimum 4 characters) | `secure123` |
+| **Role** | User's role assignment | `analista`, `supervisor`, or `chats` |
+
+### API Endpoint
+
+```javascript
+POST /api/users
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "fullName": "Juan Perez",
+  "username": "juan.perez",
+  "password": "secure123",
+  "role": "analista"
+}
+```
+
+### Step-by-Step Instructions
+
+<Steps>
+  <Step title="Enter Full Name">
+    Type the user's complete name in the **Nombre Completo** field (e.g., "Juan Perez")
+  </Step>
+  
+  <Step title="Set Username">
+    Create a unique username in the **Usuario de acceso** field (e.g., "juan.perez")
+  </Step>
+  
+  <Step title="Assign Password">
+    Enter a temporary password in the **Contraseña** field (minimum 4 characters)
+  </Step>
+  
+  <Step title="Select Role">
+    Choose the appropriate role from the dropdown:
+    - **Analista**: Standard cashout reviewer
+    - **Supervisor**: Team manager with admin access
+    - **Chats**: Chat support agent (no cashout access)
+  </Step>
+  
+  <Step title="Create Account">
+    Click the **Crear Cuenta** button to create the user
+  </Step>
+</Steps>
+
+<Note>
+New users can log in immediately using their assigned username and password. Credentials are case-sensitive.
+</Note>
+
+## Managing Existing Users
+
+### User Table
+
+The user management table displays all registered users with the following information:
+
+- **Name**: Full name of the user
+- **Username**: Login username
+- **Role**: Assigned role (color-coded badge)
+- **Actions**: Password reset and delete buttons
+
+### Changing User Passwords
+
+Supervisors can reset passwords for any user:
+
+1. Click the **🔑 Clave** button next to the user
+2. Enter the new password in the prompt (minimum 4 characters)
+3. Click **OK** to confirm
+
+**API Endpoint:**
+```javascript
+PUT /api/users/{userId}/password
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "newPassword": "newSecurePassword"
+}
+```
+
+<Tip>
+Inform users of their new password through a secure channel (not email or public chat).
+</Tip>
+
+## Deleting Users
+
+<Warning>
+Deleting a user is **permanent** and cannot be undone. The user will immediately lose access to all OPS Workspace applications.
+</Warning>
+
+### Delete Process
+
+1. Click the **🗑️ Borrar** button next to the user
+2. Confirm the deletion in the popup dialog
+3. The user is permanently removed from the system
+
+**API Endpoint:**
+```javascript
+DELETE /api/users/{userId}
+Authorization: Bearer {token}
+```
+
+### Deletion Restrictions
+
+- The **admin** user cannot be deleted (button is disabled)
+- Active sessions are terminated immediately upon deletion
+- User data in cashout history remains intact (for audit purposes)
+
+<Note>
+Deleted users are removed from the system but their name remains in historical cashout records to maintain data integrity.
+</Note>
+
+## Role-Based Visibility
+
+### Role Assignment Options
+
+When creating users, supervisors can assign one of three roles:
+
+```javascript
+// Available roles in the system
+<select id="newRole">
+  <option value="analista">Analista</option>
+  <option value="supervisor">Supervisor</option>
+  <option value="chats">Chats</option>
+</select>
+```
+
+### Role Descriptions
+
+<CardGroup cols={3}>
+  <Card title="Analista" icon="user">
+    Standard cashout reviewer with access to submit and review cashouts
+  </Card>
+  
+  <Card title="Supervisor" icon="user-tie">
+    Team manager with access to user management and all cashout functions
+  </Card>
+  
+  <Card title="Chats" icon="comments">
+    Chat support agent with access only to Operapedia (no cashout access)
+  </Card>
+</CardGroup>
+
+## User Table Reference
+
+**API Endpoint:**
+```javascript
+GET /api/users
+Authorization: Bearer {token}
+
+// Response:
+{
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "fullName": "Juan Perez",
+      "username": "juan.perez",
+      "role": "analista"
+    }
+  ]
+}
+```
+
+### Example User Management Code
+
+```javascript
+// Load all users
+async function cargarUsuarios() {
+  const res = await apiFetch(`/users`);
+  const json = await res.json();
+  const tbody = document.getElementById('usersTableBody');
+  
+  tbody.innerHTML = json.data.map(u => `
+    <tr>
+      <td>${u.fullName}</td>
+      <td>${u.username}</td>
+      <td>
+        <span class="badge-${u.role}">${u.role}</span>
+      </td>
+      <td>
+        <button onclick="cambiarPasswordUsuario('${u._id}', '${u.username}')">🔑 Clave</button>
+        <button onclick="eliminarUsuario('${u._id}')" ${u.username === 'admin' ? 'disabled' : ''}>🗑️ Borrar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Username Conventions">
+    Use lowercase usernames with dots separating first and last names:
+    - ✅ `juan.perez`
+    - ✅ `maria.garcia`
+    - ❌ `JuanPerez`
+    - ❌ `juan_perez`
+  </Accordion>
+  
+  <Accordion title="Password Security">
+    - Set temporary passwords during account creation
+    - Instruct users to change passwords after first login
+    - Use minimum 4 characters (8+ recommended)
+    - Reset passwords immediately if compromised
+  </Accordion>
+  
+  <Accordion title="Role Assignment">
+    - Start new users as **analista** role
+    - Promote to **supervisor** after training period
+    - Use **chats** role only for support agents
+    - Regularly audit user roles for accuracy
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot create user - username already exists">
+    Each username must be unique in the system. Try adding middle initials or numbers (e.g., `juan.perez2`).
+  </Accordion>
+  
+  <Accordion title="User cannot log in after creation">
+    - Verify username and password are case-sensitive
+    - Check that the user's role has access to the application
+    - Confirm the account was successfully created in the user table
+  </Accordion>
+  
+  <Accordion title="Delete button is disabled">
+    The admin user cannot be deleted for security reasons. This is an intentional system protection.
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Permissions" icon="shield" href="/guides/admin/permissions">
+    Learn about role-based permissions and access control
+  </Card>
+  
+  <Card title="Authentication" icon="key" href="/features/authentication">
+    Understand how user authentication works
+  </Card>
+</CardGroup>

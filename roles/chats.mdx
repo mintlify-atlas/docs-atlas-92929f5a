@@ -1,0 +1,192 @@
+---
+title: 'Chats Role'
+description: 'Restricted access role with Operapedia-only permissions'
+---
+
+## Overview
+
+The **Chats** role is a restricted access role designed for team members who need access to company information and resources but do not handle cashout operations. Users with this role have access only to Operapedia.
+
+## Badge Appearance
+
+Chats users are identified by an orange/gold badge in the profile dropdown:
+
+**Badge Style:**
+- Background: `rgba(243, 156, 18, 0.15)` (light orange)
+- Text Color: `#f39c12` (bright orange/gold)
+- Border: `1px solid rgba(243, 156, 18, 0.3)`
+- Label: **CHATS** (uppercase)
+
+## Permissions
+
+### Application Access
+
+| Application | Access Level |
+|-------------|-------------|
+| **Cashouts** | ❌ Hidden (no access) |
+| **Operapedia** | ✅ Full Access |
+
+<Note>
+The Cashouts application is completely hidden from the workspace dashboard for Chats role users. The app card does not appear in their view.
+</Note>
+
+### Operapedia Capabilities
+
+Chats users have full read access to Operapedia:
+
+- **View credentials** - Access login credentials for company platforms
+- **View payment methods** - See available payment processors and methods
+- **View promotions** - Access current promotional offers and campaigns
+- **Browse game catalog** - View complete game library
+
+### Restricted Capabilities
+
+Chats users **cannot**:
+
+- ❌ Access the Cashouts application
+- ❌ Submit cashout records
+- ❌ View cashout history or data
+- ❌ Review or approve cashouts
+- ❌ Manage team members
+
+## Use Cases
+
+### Who Should Have Chats Role?
+
+The Chats role is ideal for:
+
+- **Customer support representatives** - Need company info to answer questions
+- **Chat agents** - Require access to credentials and promotional details
+- **Sales team members** - Need promotion and game catalog information
+- **Marketing staff** - Access to promotional content and game data
+
+### Typical Responsibilities
+
+1. **Customer inquiries** - Answer questions using Operapedia knowledge base
+2. **Promotion details** - Share accurate promotion information with customers
+3. **Game information** - Provide details about available games
+4. **Payment methods** - Inform customers about available payment options
+
+## UI Differences
+
+### Dashboard View
+
+The Chats role has a significantly different dashboard experience. The Cashouts app card is completely hidden:
+
+**What Chats users see:**
+```html
+<!-- Cashouts card is hidden -->
+<a href="/cashouts/" class="app-card" id="card-cashouts" style="display: none;">
+  ...
+</a>
+
+<!-- Only Operapedia card is visible -->
+<a href="/operapedia/" class="app-card" id="card-operapedia" style="display: flex;">
+  <div class="app-icon">📓</div>
+  <h3 class="app-title">Operapedia</h3>
+  ...
+</a>
+```
+
+### Profile Dropdown
+
+The orange/gold badge is applied in the profile dropdown (lines 248-256 in source):
+
+```javascript
+if (user.role === 'chats') {
+    // Orange/Gold badge styling
+    roleBadge.style.background = 'rgba(243, 156, 18, 0.15)';
+    roleBadge.style.color = '#f39c12';
+    roleBadge.style.border = '1px solid rgba(243, 156, 18, 0.3)';
+    
+    // Hide Cashouts card
+    cardCashouts.style.display = 'none';
+}
+```
+
+<Note>
+The UI hiding logic is implemented client-side after authentication. The system checks `user.role === 'chats'` and sets the Cashouts card display to `none`.
+</Note>
+
+## Workflow Example
+
+### Typical Customer Support Scenario
+
+1. **Customer asks about promotion** via chat
+2. **Open Operapedia** from workspace dashboard
+3. **Navigate to Promotions** section
+4. **Find relevant promotion** details
+5. **Provide accurate information** to customer
+6. **Reference payment methods** if needed
+7. **Look up game details** if customer has questions
+
+## Differences from Other Roles
+
+### vs. Analista
+
+Chats role is significantly more restricted:
+
+| Feature | Chats | Analista |
+|---------|-------|----------|
+| Cashouts App | ❌ Hidden | ✅ Full access |
+| Submit Cashouts | ❌ | ✅ |
+| Operapedia | ✅ | ✅ |
+| View History | ❌ | ✅ |
+
+### vs. Supervisor
+
+Chats have access to only one application (Operapedia) while Supervisors have full access to both applications plus management capabilities.
+
+## Security Considerations
+
+### Information Access
+
+<Note>
+While Chats users cannot access cashout operations, they still have access to sensitive information in Operapedia including credentials and payment details. Treat this access responsibly.
+</Note>
+
+### Best Practices
+
+- **Never share credentials** from Operapedia with unauthorized persons
+- **Use information responsibly** - only for legitimate business purposes
+- **Report security concerns** to your supervisor immediately
+- **Log out when done** - always use the logout button in profile dropdown
+
+## Requesting Additional Access
+
+If your role responsibilities change and you need access to the Cashouts application:
+
+1. **Contact your supervisor** or system administrator
+2. **Explain your business need** for additional access
+3. **Wait for role upgrade** - your supervisor can update your role to Analista
+4. **Log out and log back in** after role change to see updated permissions
+
+## Implementation Details
+
+### Client-Side Role Checking
+
+The role-based UI rendering happens in the `mostrarDashboard()` function:
+
+```javascript
+function mostrarDashboard(user) {
+    // ... profile setup code ...
+    
+    // Default: show both cards
+    cardCashouts.style.display = 'flex';
+    cardOperapedia.style.display = 'flex';
+    
+    // Role-specific logic
+    if (user.role === 'chats') {
+        // Hide Cashouts for chats role
+        cardCashouts.style.display = 'none';
+    }
+}
+```
+
+**Source location**: `index.html:235-256`
+
+## Related Documentation
+
+- [User Roles Overview](/roles/overview) - Complete role comparison and permission matrix
+- [Analista Role](/roles/analista) - Standard access role with Cashouts permissions
+- [Supervisor Role](/roles/supervisor) - Full access administrative role
